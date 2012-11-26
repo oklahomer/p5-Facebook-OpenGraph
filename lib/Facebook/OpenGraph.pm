@@ -54,6 +54,25 @@ sub parse_signed_request {
     return $datam;
 }
 
+# https://developers.facebook.com/docs/reference/dialogs/oauth/
+sub auth_uri {
+    my ($self, $params_ref) = @_;
+    $params_ref ||= +{};
+    croak 'redirect_uri is not given' unless $params_ref->{redirect_uri};
+
+    if (my $scope_ref = ref $params_ref->{scope}) {
+        $params_ref->{scope} =
+            $scope_ref eq 'ARRAY' ? join ',', @{$params_ref->{scope}}
+                                  : croak 'scope must be string or array ref';
+    }
+    $params_ref->{client_id} ||= $self->app_id;
+    $params_ref->{display}   ||= 'page';
+    my $uri = $self->uri('/oauth/dialog');
+    $uri->query_form($params_ref);
+
+    return $uri->as_string;
+}
+
 sub set_app_token {
     my ($self, $token) = @_;
     return $self->{access_token} = $token || $self->get_app_token;
