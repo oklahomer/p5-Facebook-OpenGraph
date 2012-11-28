@@ -56,19 +56,19 @@ sub parse_signed_request {
 
 # https://developers.facebook.com/docs/reference/dialogs/oauth/
 sub auth_uri {
-    my ($self, $params_ref) = @_;
-    $params_ref ||= +{};
-    croak 'redirect_uri is not given' unless $params_ref->{redirect_uri};
+    my ($self, $param_ref) = @_;
+    $param_ref ||= +{};
+    croak 'redirect_uri is not given' unless $param_ref->{redirect_uri};
 
-    if (my $scope_ref = ref $params_ref->{scope}) {
-        $params_ref->{scope} =
-            $scope_ref eq 'ARRAY' ? join ',', @{$params_ref->{scope}}
+    if (my $scope_ref = ref $param_ref->{scope}) {
+        $param_ref->{scope} =
+            $scope_ref eq 'ARRAY' ? join ',', @{$param_ref->{scope}}
                                   : croak 'scope must be string or array ref';
     }
-    $params_ref->{client_id} ||= $self->app_id;
-    $params_ref->{display}   ||= 'page';
+    $param_ref->{client_id} ||= $self->app_id;
+    $param_ref->{display}   ||= 'page';
     my $uri = $self->uri('/oauth/dialog');
-    $uri->query_form($params_ref);
+    $uri->query_form($param_ref);
 
     return $uri->as_string;
 }
@@ -104,9 +104,9 @@ sub fetch {
 # https://developers.facebook.com/docs/reference/ads-api/etags-reference/
 # $fb->fetch('me', +{fields => [qw(f1 f2)]}, ETAG_VALUE);
 sub fetch_with_etag {
-    my ($self, $uri, $datam, $etag) = @_;
+    my ($self, $uri, $param_ref, $etag) = @_;
 
-    my $response = $self->request('GET', $uri, $datam, ['IF-None-Match' => $etag]);
+    my $response = $self->request('GET', $uri, $param_ref, ['IF-None-Match' => $etag]);
 
     return $response->is_modified ? $response->as_hashref
                                   : undef;
@@ -200,10 +200,10 @@ sub delete {
     # Sometimes sending DELETE method failes,
     # but POST method with method=delete works.
     # Weird...
-    my $params_ref = +{
+    my $param_ref = +{
         method => 'delete',
     };
-    return $self->request('POST', $path, $params_ref)->as_hashref;
+    return $self->request('POST', $path, $param_ref)->as_hashref;
 }
 
 sub request {
