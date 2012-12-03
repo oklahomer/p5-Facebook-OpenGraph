@@ -4,8 +4,7 @@ use warnings;
 use Facebook::OpenGraph::Response;
 use URI;
 use URI::QueryParam;
-use Furl;
-use Furl::Response;
+use Furl::HTTP;
 use Data::Recursive::Encode;
 use JSON::XS qw(encode_json decode_json);
 use UNIVERSAL;
@@ -21,11 +20,11 @@ sub new {
     return bless $args, $class;
 }
 
-sub app_id       { shift->{app_id}           }
-sub secret       { shift->{secret}           }
-sub ua           { shift->{ua} ||= Furl->new }
-sub namespace    { shift->{namespace}        }
-sub access_token { shift->{access_token}     }
+sub app_id       { shift->{app_id}                 }
+sub secret       { shift->{secret}                 }
+sub ua           { shift->{ua} ||= Furl::HTTP->new }
+sub namespace    { shift->{namespace}              }
+sub access_token { shift->{access_token}           }
 
 sub uri {
     my ($self, $path) = @_;
@@ -133,19 +132,14 @@ sub batch {
     my @datam = ();
     for my $content (@{$batch_response->as_hashref}) {
         my @headers  = map { $_->{name} => $_->{value} } @{$content->{headers}};
-        my $response = Furl::Response->new(
-            $batch_response->response->{minor_version},
-            $content->{code},
-            $content->{message},
-            \@headers,
-            $content->{body},
-        );
-
-        my $res_obj = Facebook::OpenGraph::Response->new(+{
-            response => $response,
+        my $response = Facebook::OpenGraph::Response->new(+{
+            code     => $content->{code},
+            message  => $content->{message},
+            headers  => \@headers,
+            content  => $content->{body},
         });
-        croak $res_obj->error_string unless $res_obj->is_success;
-        push @datam, $res_obj->as_hashref;
+        croak $response->error_string unless $response->is_success;
+        push @datam, $response->as_hashref;
     }
 
     return \@datam;
@@ -232,18 +226,22 @@ sub request {
         $content = '';
     }
 
-    my $response = $self->ua->request(
-        method  => $method,
-        url     => $uri,
-        headers => $headers,
-        content => $content,
-    );
-    my $res_obj = Facebook::OpenGraph::Response->new(+{
-        response => $response,
+    my ($res_minor_version, $res_status, $res_msg, $res_headers, $res_content)
+        = $self->ua->request(
+            method  => $method,
+            url     => $uri,
+            headers => $headers,
+            content => $content,
+        );
+    my $response = Facebook::OpenGraph::Response->new(+{
+        code     => $res_status,
+        message  => $res_msg,
+        headers  => $res_headers,
+        content  => $res_content,
     });
-    croak $res_obj->error_string unless $res_obj->is_success;
+    croak $response->error_string unless $response->is_success;
 
-    return $res_obj;
+    return $response;
 }
 
 sub prep_param {

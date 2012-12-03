@@ -6,5 +6,10 @@ $ENV{LANG} = 'C';
 all_pod_files_spelling_ok('lib');
 __DATA__
 Oklahomer
-hagiwara_dot_go_at_gmail_dot_com
 Facebook::OpenGraph
+API
+fql
+gmail
+namespace
+ua
+uri
