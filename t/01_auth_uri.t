@@ -13,7 +13,7 @@ subtest '' => sub {
     });
     my $uri = URI->new($url);
     is $uri->scheme, 'https', 'scheme';
-    is $uri->path, '/oauth/dialog', 'path';
+    is $uri->path, '/dialog/oauth/', 'path';
     is_deeply(
         +{$uri->query_form},
         +{

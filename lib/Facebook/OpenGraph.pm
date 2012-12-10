@@ -2,6 +2,7 @@ package Facebook::OpenGraph;
 use strict;
 use warnings;
 use Facebook::OpenGraph::Response;
+use HTTP::Request::Common;
 use URI;
 use URI::QueryParam;
 use Furl::HTTP;
@@ -33,7 +34,7 @@ sub uri {
 
 sub video_uri {
     my ($self, $path) = @_;
-    return URI->new_abs($path, 'https://graph-video.facebook.com/');
+    return URI->uri($path, 'https://graph-video.facebook.com/');
 }
 
 sub parse_signed_request {
@@ -66,7 +67,7 @@ sub auth_uri {
     }
     $param_ref->{client_id} ||= $self->app_id;
     $param_ref->{display}   ||= 'page';
-    my $uri = $self->uri('/oauth/dialog');
+    my $uri = $self->uri('https://facebook.com/dialog/oauth/');
     $uri->query_form($param_ref);
 
     return $uri->as_string;
@@ -215,11 +216,28 @@ sub request {
 
     my $content = undef;
     if ($method eq 'POST') {
-        # When posting a video, use graph-video.facebook.com .
-        # For other actions, use graph.facebook.com/VIDEO_ID/CONNECTION_TYPE
-        $uri->host($self->video_uri->host) if $uri->path =~ /\/videos$/;
         $uri->query_form(+{});
-        $content = $param_ref;
+
+        if ($param_ref->{source}) {
+            # When posting a video, use graph-video.facebook.com .
+            # For other actions, use graph.facebook.com/VIDEO_ID/CONNECTION_TYPE
+            $uri->host($self->video_uri->host) if $uri->path =~ /\/videos$/;
+
+            push @$headers, (Content_Type => 'form-data');
+            my $req = POST $uri, @$headers, Content => [%$param_ref];
+            $content = $req->content;
+            my $req_header = $req->headers;
+            $headers = +[
+                map {
+                    my $k = $_;
+                    map { ( $k => $_ ) } $req_header->header($_);
+                } $req_header->header_field_names
+            ];
+        }
+        else {
+            # post simple params such as message, link, description, etc...
+            $content = $param_ref;
+        }
     }
     else {
         $uri->query_form($param_ref);
@@ -248,8 +266,16 @@ sub prep_param {
     my ($self, $param_ref) = @_;
 
     $param_ref = Data::Recursive::Encode->encode_utf8($param_ref || +{});
-    $param_ref->{fields} = $self->prep_fields_recursive($param_ref->{fields})
-        if $param_ref->{fields};
+
+    # source parameter contains file path
+    if (my $path = $param_ref->{source}) {
+        $param_ref->{source} = ref $path ? $path : [$path];
+    }
+
+    # use Field Expansion
+    if (my $field_ref = $param_ref->{fields}) {
+        $param_ref->{fields} = $self->prep_fields_recursive($field_ref);
+    }
 
     return $param_ref;
 }

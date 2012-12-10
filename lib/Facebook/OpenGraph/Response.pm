@@ -35,7 +35,10 @@ sub as_json {
 }
 
 sub as_hashref {
-    return decode_json(shift->as_json);
+    # just in case content is not properly formatted
+    my $hash_ref = eval { decode_json(shift->as_json); };
+    croak $@ if $@;
+    return $hash_ref;
 }
 
 sub is_modified {
