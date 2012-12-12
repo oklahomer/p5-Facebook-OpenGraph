@@ -4,29 +4,36 @@ use Test::More;
 use Facebook::OpenGraph;
 use t::Util;
 
-subtest 'post photo' => sub {
+subtest 'post movie' => sub {
     send_request {
 
         my $fb = Facebook::OpenGraph->new(+{
             app_id       => 12345678,
             access_token => '12345qwerty',
         });
-        my $response = $fb->publish('/me/photos',+{ source => './t/resource/sample.png', message => 'upload photo'});
-        is $response->{id}, 100550186784540, 'id';
-        is $response->{post_id}, 100004886761157_100537230119169, 'post_id';
+        my $response = $fb->publish(
+            '/me/videos',
+            +{
+                source      => './t/resource/IMG_6753.MOV',
+                title       => 'domo-kun',
+                description => 'found it @ walmart'
+            }
+        );
+
+        is_deeply $response, +{ id => 111111111 }, 'response';
 
     } receive_request {
-
+        
         my %args = @_;
         is_deeply
             $args{headers},
             [
                 'Authorization', 'OAuth 12345qwerty',
-                'Content-Length', 69332,
+                'Content-Length', 289105,
                 'Content-Type', 'multipart/form-data; boundary=xYzZY',
             ],
             'header';
-        is $args{url}->as_string, 'https://graph.facebook.com/me/photos', 'end point';
+        is $args{url}->as_string, 'https://graph-video.facebook.com/me/videos', 'end point';
         is $args{method}, 'POST', 'HTTP POST method';
 
         return +{
@@ -34,13 +41,11 @@ subtest 'post photo' => sub {
             status  => 200,
             message => 'OK',
             content => +{
-                post_id => 100004886761157_100537230119169, # user_id + post id combo
-                id      => 100550186784540,
+                id => 111111111,
             }
-        }
+        };
 
     }
 };
-
 
 done_testing;

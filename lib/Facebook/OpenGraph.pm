@@ -34,7 +34,7 @@ sub uri {
 
 sub video_uri {
     my ($self, $path) = @_;
-    return URI->uri($path, 'https://graph-video.facebook.com/');
+    return URI->new_abs($path, 'https://graph-video.facebook.com/');
 }
 
 sub parse_signed_request {
@@ -54,6 +54,7 @@ sub parse_signed_request {
     return $datam;
 }
 
+# OAuth Dialog: Constructing a URL to the OAuth Dialog
 # https://developers.facebook.com/docs/reference/dialogs/oauth/
 sub auth_uri {
     my ($self, $param_ref) = @_;
@@ -78,8 +79,8 @@ sub set_app_token {
     return $self->{access_token} = $token || $self->get_app_token;
 }
 
-# Page: Page Access Tokens
-# https://developers.facebook.com/docs/reference/api/page/#page_access_tokens
+# Login as an App: Step 1. Obtain an App Access Token
+# https://developers.facebook.com/docs/howtos/login/login-as-app/#step1
 sub get_app_token {
     my $self = shift;
 
@@ -93,7 +94,12 @@ sub get_app_token {
     };
     my $response = $self->request('GET', '/oauth/access_token', $query_ref);
 
-    return URI->new('?'.$response->content)->query_param('access_token');
+    # Get app_token from response content
+    # content should be access_token=12345|QwerTy formatted
+    my $res_content = $response->content;
+    my $token = URI->new('?'.$res_content)->query_param('access_token');
+    $token ? return $token
+           : croak 'can\'t get app_token properly: '.$res_content;
 }
 
 sub fetch {
@@ -102,10 +108,11 @@ sub fetch {
 
 # Using ETags
 # https://developers.facebook.com/docs/reference/ads-api/etags-reference/
-# $fb->fetch('me', +{fields => [qw(f1 f2)]}, ETAG_VALUE);
 sub fetch_with_etag {
     my ($self, $uri, $param_ref, $etag) = @_;
 
+    # Attach ETag value to header
+    # Returns status 304 w/o contnet or status 200 w/ modified content
     my $response = $self->request('GET', $uri, $param_ref, ['IF-None-Match' => $etag]);
 
     return $response->is_modified ? $response->as_hashref
@@ -125,19 +132,20 @@ sub bulk_fetch {
 # Batch Requests
 # https://developers.facebook.com/docs/reference/api/batch/
 sub batch {
-    my ($self, $batch) = @_;
+    my $self  = shift;
+    my $batch = shift;
 
-    my $batch_response = $self->batch_fast($batch);
+    my $responses_ref = $self->batch_fast($batch, @_);
 
     # Devide response content and create response objects that correspond to each request
     my @datam = ();
-    for my $content (@{$batch_response->as_hashref}) {
-        my @headers  = map { $_->{name} => $_->{value} } @{$content->{headers}};
+    for my $res_ref (@$responses_ref) {
+        my @headers  = map { $_->{name} => $_->{value} } @{$res_ref->{headers}};
         my $response = Facebook::OpenGraph::Response->new(+{
-            code     => $content->{code},
-            message  => $content->{message},
+            code     => $res_ref->{code},
+            message  => $res_ref->{message},
             headers  => \@headers,
-            content  => $content->{body},
+            content  => $res_ref->{body},
         });
         croak $response->error_string unless $response->is_success;
         push @datam, $response->as_hashref;
@@ -148,7 +156,8 @@ sub batch {
 
 # doesn't create F::OG::Response object for each response
 sub batch_fast {
-    my ($self, $batch) = @_;
+    my $self  = shift;
+    my $batch = shift;
 
     # Other than HTTP header, you need to set access_token as top level parameter.
     # You can specify individual token for each request
@@ -159,14 +168,15 @@ sub batch_fast {
         batch        => encode_json($batch),
     };
 
-    return $self->request('POST', '', $query, []);
+    return $self->request('POST', '', $query, @_)->as_hashref;
 }
 
-# # Facebook Query Language (FQL)
+# Facebook Query Language (FQL)
 # https://developers.facebook.com/docs/reference/fql/
 sub fql {
-    my ($self, $query) = @_;
-    return $self->request('GET', 'fql', +{q => $query}, [])->as_hashref;
+    my $self  = shift;
+    my $query = shift;
+    return $self->request('GET', 'fql', +{q => $query}, @_)->as_hashref;
 }
 
 # Facebook Query Language (FQL): Multi-query
@@ -219,6 +229,8 @@ sub request {
         $uri->query_form(+{});
 
         if ($param_ref->{source}) {
+            # post photo or video to /OBJECT_ID/(photos|videos)
+
             # When posting a video, use graph-video.facebook.com .
             # For other actions, use graph.facebook.com/VIDEO_ID/CONNECTION_TYPE
             $uri->host($self->video_uri->host) if $uri->path =~ /\/videos$/;
@@ -267,7 +279,8 @@ sub prep_param {
 
     $param_ref = Data::Recursive::Encode->encode_utf8($param_ref || +{});
 
-    # source parameter contains file path
+    # Source parameter contains file path.
+    # It must be an array ref to work w/ HTTP::Request::Common.
     if (my $path = $param_ref->{source}) {
         $param_ref->{source} = ref $path ? $path : [$path];
     }
