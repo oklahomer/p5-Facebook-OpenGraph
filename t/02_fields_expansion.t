@@ -89,19 +89,16 @@ subtest 'field expansion' => sub {
     } receive_request {
 
         my %args = @_;
-        is_deeply $args{headers}, ['Authorization', 'OAuth qwerty'], 'headers';
-        is $args{content}, '', 'content';
-        is $args{method}, 'GET', 'HTTP GET request';
-        my $uri = $args{url};
-        is $uri->scheme, 'https', 'scheme';
-        is $uri->host, 'graph.facebook.com', 'host';
-        is $uri->path, '/me', 'path';
+        
         is_deeply(
-            +{$uri->query_form},
+            \%args,
             +{
-                fields => 'name,email,albums.fields(name,photos.fields(name,picture,tags.limit(2)).limit(3)).limit(5)',
+                headers => ['Authorization' => 'OAuth qwerty'],
+                content => '',
+                method  => 'GET',
+                url     => 'https://graph.facebook.com/me?fields=name%2Cemail%2Calbums.fields(name%2Cphotos.fields(name%2Cpicture%2Ctags.limit(2)).limit(3)).limit(5)',
             },
-            'query parameter',
+            'args'
         );
 
         return +{

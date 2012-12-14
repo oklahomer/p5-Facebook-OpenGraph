@@ -18,16 +18,19 @@ subtest 'post photo' => sub {
     } receive_request {
 
         my %args = @_;
-        is_deeply
-            $args{headers},
-            [
-                'Authorization', 'OAuth 12345qwerty',
-                'Content-Length', 69332,
-                'Content-Type', 'multipart/form-data; boundary=xYzZY',
-            ],
-            'header';
-        is $args{url}->as_string, 'https://graph.facebook.com/me/photos', 'end point';
-        is $args{method}, 'POST', 'HTTP POST method';
+        ok delete $args{content}, 'content'; # too huge to compare, so just check if it's given
+        is_deeply(
+            \%args,
+            +{
+                method  => 'POST',
+                url     => 'https://graph.facebook.com/me/photos',
+                headers => [
+                    'Authorization'  => 'OAuth 12345qwerty',
+                    'Content-Length' =>  69332,
+                    'Content-Type'   => 'multipart/form-data; boundary=xYzZY',
+                ],
+            }
+        );
 
         return +{
             headers => [],

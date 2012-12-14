@@ -5,6 +5,15 @@ use Facebook::OpenGraph;
 use t::Util;
 
 subtest 'create test user' => sub {
+
+    my $datam = +{
+        id           => 123456789,
+        access_token => '5678uiop',
+        login_url    => 'https://www.facebook.com/platform/test_account_login?user_id=123456789&n=asdfghh',
+        email        => 'saffasdffad@tfbnw.net',
+        password     => 67890,
+    };
+
     send_request {
 
         my $fb = Facebook::OpenGraph->new(+{
@@ -19,31 +28,34 @@ subtest 'create test user' => sub {
                 permissions => 'read_stream',
             },
         );
-        is $response->{id}, 123456789, 'user id';
-        is $response->{access_token}, '5678uiop', 'access_token';
-        is $response->{login_url}, 'https://www.facebook.com/platform/test_account_login?user_id=123456789&n=asdfghh', 'login_url';
-        is $response->{email}, 'saffasdffad@tfbnw.net', 'user email';
-        is $response->{password}, '67890', 'user password';
+        is_deeply $response, $datam, 'datam';
 
     } receive_request {
 
         my %args = @_;
-        is_deeply $args{headers}, ['Authorization', 'OAuth 12345qwerty'], 'header';
-        is_deeply $args{content}, +{permissions => 'read_stream', installed => 'true'}, 'content';
-        is $args{url}->as_string, 'https://graph.facebook.com/1234556/accounts/test-users', 'end point';
-        is $args{method}, 'POST', 'HTTP POST method';
+        is_deeply(
+            delete $args{content},
+            +{
+                permissions => 'read_stream',
+                installed   => 'true',
+            },
+            'content'
+        );
+        is_deeply(
+            \%args,
+            +{
+                headers => ['Authorization' => 'OAuth 12345qwerty'],
+                url     => 'https://graph.facebook.com/1234556/accounts/test-users',
+                method  => 'POST',
+            },
+            'args'
+        );
 
         return +{
             headers => [],
             status  => 200,
             message => 'OK',
-            content => +{
-                id           => 123456789,
-                access_token => '5678uiop',
-                login_url    => 'https://www.facebook.com/platform/test_account_login?user_id=123456789&n=asdfghh',
-                email        => 'saffasdffad@tfbnw.net',
-                password     => 67890,
-            },
+            content => $datam,
         };
 
     }

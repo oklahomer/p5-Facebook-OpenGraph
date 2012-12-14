@@ -6,44 +6,43 @@ use URI;
 use t::Util;
 
 subtest 'user' => sub {
+
+    my $app_id = 127497087322461;
+    my $datam = +{
+        display_name => 'app',
+        icon_url => 'http://photos-c.ak.fbcdn.net/photos-ak-snc7/v43/45/'.$app_id.'/app_2_'.$app_id.'_1287.gif',
+    };
+    my $query = 'SELECT display_name, icon_url FROM application WHERE app_id = '.$app_id;
+
     send_request {
         
         my $fb = Facebook::OpenGraph->new;
-        my $res = $fb->fql(
-            'SELECT display_name, icon_url FROM application WHERE app_id = 127497087322461'
-        );
+        my $res = $fb->fql($query);
 
-        ok $res->{data};
-        my $data = $res->{data}[0];
-        is $data->{display_name}, 'app', 'display name';
-        is $data->{icon_url}, 'http://photos-c.ak.fbcdn.net/photos-ak-snc7/v43/45/127497087322461/app_2_127497087322461_1287.gif', 'icon url';
+        is_deeply $res->{data}, [$datam], 'datam';
 
     } receive_request {
 
+        my $url = URI->new;
+        $url->query_form(+{q => $query});
         my %args = @_;
-        is_deeply $args{headers}, [], 'no particular header';
-        my $uri = $args{url};
-        is $uri->scheme, 'https', 'scheme';
-        is $uri->host, 'graph.facebook.com', 'host';
         is_deeply(
-            +{ $uri->query_form },
+            \%args,
             +{
-                'q' => 'SELECT display_name, icon_url FROM application WHERE app_id = 127497087322461',
+                headers => [],
+                url     => 'https://graph.facebook.com/fql?'.$url->query,
+                method  => 'GET',
+                content => '',
             },
-            'end point',
+            'args'
         );
-        is $args{method}, 'GET', 'HTTP GET method';
-        is $args{content}, '', 'content';
 
         return +{
             status  => 200,
             message => 'OK',
             content => +{
                 data => [
-                    +{
-                        display_name => 'app',
-                        icon_url => 'http://photos-c.ak.fbcdn.net/photos-ak-snc7/v43/45/127497087322461/app_2_127497087322461_1287.gif',
-                    }
+                    $datam,
                 ],
             }
         };

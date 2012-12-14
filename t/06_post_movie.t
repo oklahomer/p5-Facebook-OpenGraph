@@ -25,16 +25,20 @@ subtest 'post movie' => sub {
     } receive_request {
         
         my %args = @_;
-        is_deeply
-            $args{headers},
-            [
-                'Authorization', 'OAuth 12345qwerty',
-                'Content-Length', 289105,
-                'Content-Type', 'multipart/form-data; boundary=xYzZY',
-            ],
-            'header';
-        is $args{url}->as_string, 'https://graph-video.facebook.com/me/videos', 'end point';
-        is $args{method}, 'POST', 'HTTP POST method';
+        ok delete $args{content}, 'content'; # too huge to compare, so just check if it's given
+        is_deeply(
+            \%args,
+            +{
+                url     => 'https://graph-video.facebook.com/me/videos',
+                method  => 'POST',
+                headers => [
+                    'Authorization'  => 'OAuth 12345qwerty',
+                    'Content-Length' => 289105,
+                    'Content-Type'   => 'multipart/form-data; boundary=xYzZY',
+                ],
+            },
+            'args'
+        );
 
         return +{
             headers => [],

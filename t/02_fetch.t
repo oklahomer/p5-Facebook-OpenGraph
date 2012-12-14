@@ -6,75 +6,89 @@ use URI;
 use t::Util;
 
 subtest 'user' => sub {
+
+    my $datam = +{
+        name       => 'Mark Zuckerberg', # full name
+        id         => 4, # id 1-3 were test users
+        locale     => 'en_US', # string containing the ISO Language Code and ISO Country Code
+        last_name  => 'Zuckerberg',
+        username   => 'zuck',
+        first_name => 'Mark',
+        gender     => 'male', # male or female. no other "politically correct" value :-(
+        link       => 'http://www.facebook.com/zuck',
+    };
+
     send_request {
 
         my $fb = Facebook::OpenGraph->new;
         my $user = $fb->fetch('zuck');
 
-        my $link = URI->new($user->{link});
-        is $link->path, '/zuck', 'link';
-        is $user->{id}, 4, 'id';
-        is $user->{username}, 'zuck', 'username';
-        ok !$user->{picture}, 'no picture';
+        is_deeply $datam, $user, 'datam';
 
     } receive_request {
 
         my %args = @_;
-        is_deeply $args{headers}, [], 'no particular header';
-        is $args{url}->as_string, 'https://graph.facebook.com/zuck', 'end point';
-        is $args{content}, '', 'no content given';
-        is $args{method}, 'GET', 'HTTP GET method';
+        
+        is_deeply(
+            \%args,
+            +{
+                headers => [],
+                url     => 'https://graph.facebook.com/zuck',
+                content => '',
+                method  => 'GET',
+            },
+            'args'
+        );
         
         return +{
             headers => [],
             status  => 200,
             message => 'OK',
-            content => +{
-                name       => 'Mark Zuckerberg',
-                id         => 4,
-                locale     => 'en_US',
-                last_name  => 'Zuckerberg',
-                username   => 'zuck',
-                first_name => 'Mark',
-                gender     => 'male',
-                link       => 'http://www.facebook.com/zuck',
-            },
+            content => $datam,
         };
 
     };
 };
 
 subtest 'with fields' => sub {
+                
+    my $datam = +{
+        id      => 4, # id is always returned even if it's not specified in fields parameter
+        picture => +{ # returns is_silhouette and url after October 2012 Breaking Changes
+            data => +{
+                is_silhouette => 'false',
+                url           => 'http://profile.ak.fbcdn.net/hprofile-ak-prn1/157340_4_3955636_q.jpg',
+            },
+        },
+    };
+
     send_request {
 
         my $fb   = Facebook::OpenGraph->new;
         my $user = $fb->fetch('zuck', +{fields => 'picture'});
 
-        is $user->{id}, 4, 'id';
-        ok $user->{picture}, 'has picture';
-        is $user->{picture}->{data}->{is_silhouette}, 'false', 'not silhouette';
-        is $user->{picture}->{data}->{url}, 'http://profile.ak.fbcdn.net/hprofile-ak-prn1/157340_4_3955636_q.jpg';
+        is_deeply $datam, $user, 'datam';
+
     } receive_request {
 
         my %args = @_;
-        is_deeply $args{headers}, [], 'no particular header';
-        is $args{url}->as_string, 'https://graph.facebook.com/zuck?fields=picture', 'end point';
-        is $args{content}, '', 'no content given';
-        is $args{method}, 'GET', 'HTTP GET method';
+
+        is_deeply(
+            \%args,
+            +{
+                headers => [],
+                url     => 'https://graph.facebook.com/zuck?fields=picture',
+                content => '',
+                method  => 'GET',
+            },
+            'args'
+        );
 
         return +{
             headers => [],
             status  => 200,
             message => 'OK',
-            content => +{
-                id      => 4,
-                picture => +{
-                    data => +{
-                        is_silhouette => 'false',
-                        url           => 'http://profile.ak.fbcdn.net/hprofile-ak-prn1/157340_4_3955636_q.jpg',
-                    },
-                },
-            },
+            content => $datam,
         };
 
     };

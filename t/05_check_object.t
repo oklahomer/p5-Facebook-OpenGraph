@@ -8,6 +8,9 @@ use JSON::XS qw(encode_json);
 
 # samples URLs are found at https://developers.facebook.com/tools/debug/examples/
 subtest 'good'  => sub {
+
+    my $target = 'https://developers.facebook.com/tools/debug/examples/good';
+
     my $val = +{
         application => +{
             url  => 'http://www.facebook.com/apps/application.php?id=115109575169727',
@@ -31,23 +34,26 @@ subtest 'good'  => sub {
     send_request {
 
         my $fb = Facebook::OpenGraph->new;
-        my $target_url = 'https://developers.facebook.com/tools/debug/examples/good';
-        my $response   = $fb->check_object($target_url);
+        my $response   = $fb->check_object($target);
 
         is_deeply $response, $val, 'response';
 
     } receive_request {
     
         my %args = @_;
-        is $args{method}, 'POST', 'HTTP POST method';
-        is_deeply $args{headers}, [], 'no particular header';
-        is_deeply $args{content}, +{
-            id     => 'https://developers.facebook.com/tools/debug/examples/good',
-            scrape => 'true',
-        };
-        my $uri = $args{url};
-        is $uri->path, '/', 'path';
-        is_deeply +{$uri->query_form}, +{}, 'query parameter';
+        is_deeply(
+            \%args,
+            +{
+                headers => [],
+                method  => 'POST',
+                url     => 'https://graph.facebook.com/',
+                content => +{
+                    id     => $target,
+                    scrape => 'true',
+                },
+            },
+            'args',
+        );
 
         return +{
             message => 'OK',
@@ -60,24 +66,34 @@ subtest 'good'  => sub {
 };
 
 subtest 'bad app id' => sub {
+        
+    my $target = 'https://developers.facebook.com/tools/debug/examples/bad_app_id';
+
+    my $error_code    = 1611016;
+    my $error_type    = 'Exception';
+    my $error_message = "Object at URL 'https://developers.facebook.com/tools/debug/examples/bad_app_id' of type 'website' is invalid because the given value 'Paul is Awesome' for property 'fb:app_id' could not be parsed as type 'fbid'.";
+
     send_request {
 
-        my $target_url = 'https://developers.facebook.com/tools/debug/examples/bad_app_id';
         my $fb = Facebook::OpenGraph->new;
-        throws_ok sub { $fb->check_object($target_url) }, qr/1611016:- Exception:Object at URL 'https:\/\/developers.facebook.com\/tools\/debug\/examples\/bad_app_id' of type 'website' is invalid because the given value 'Paul is Awesome' for property 'fb:app_id' could not be parsed as type 'fbid'\./, 'exception';
+        throws_ok sub { $fb->check_object($target) }, qr/$error_code:- $error_type:$error_message/, 'exception';
 
     } receive_request {
 
         my %args = @_;
-        is $args{method}, 'POST', 'HTTP POST method';
-        is_deeply $args{headers}, [], 'no particular header';
-        is_deeply $args{content}, +{
-            id     => 'https://developers.facebook.com/tools/debug/examples/bad_app_id',
-            scrape => 'true',
-        };
-        my $uri = $args{url};
-        is $uri->path, '/', 'path';
-        is_deeply +{$uri->query_form}, +{}, 'query parameter';
+        is_deeply(
+            \%args,
+            +{
+                method  => 'POST',
+                headers => [],
+                url     => 'https://graph.facebook.com/',
+                content => +{
+                    id     => $target,
+                    scrape => 'true',
+                },
+            },
+            'args'
+        );
         
         return +{
             status  => 500,
@@ -85,9 +101,9 @@ subtest 'bad app id' => sub {
             message => 'Internal Server Error',
             content => encode_json(+{
                 error => +{
-                    type    => 'Exception',
-                    message => "Object at URL 'https://developers.facebook.com/tools/debug/examples/bad_app_id' of type 'website' is invalid because the given value 'Paul is Awesome' for property 'fb:app_id' could not be parsed as type 'fbid'.",
-                    code    => 1611016,
+                    type    => $error_type,
+                    message => $error_message,
+                    code    => $error_code,
                 },
             }),
         };
@@ -96,6 +112,8 @@ subtest 'bad app id' => sub {
 };
 
 subtest 'bad domain' => sub {
+
+    my $target = 'https://developers.facebook.com/tools/debug/examples/bad_domain';
 
     my $val = +{
         id           => 10150096126766188,
@@ -113,24 +131,28 @@ subtest 'bad domain' => sub {
 
     send_request {
 
-        my $target_url = 'https://developers.facebook.com/tools/debug/examples/bad_domain';
         my $fb = Facebook::OpenGraph->new;
-        my $response = $fb->check_object($target_url);
+        my $response = $fb->check_object($target);
+
         is_deeply $response, $val, 'response';
 
     } receive_request {
 
         my %args = @_;
         
-        is $args{method}, 'POST', 'HTTP POST method';
-        is_deeply $args{headers}, [], 'no particular header';
-        is_deeply $args{content}, +{
-            id     => 'https://developers.facebook.com/tools/debug/examples/bad_domain',
-            scrape => 'true',
-        };
-        my $uri = $args{url};
-        is $uri->path, '/', 'path';
-        is_deeply +{$uri->query_form}, +{}, 'query parameter';
+        is_deeply(
+            \%args,
+            +{
+                headers => [],
+                method  => 'POST',
+                url     => 'https://graph.facebook.com/',
+                content => +{
+                    id     => $target,
+                    scrape => 'true',
+                },
+            },
+            'args'
+        );
 
         return +{
             status  => 200, # Isn't it weird that they give 500 for bad app_id and now give us 200?
@@ -144,31 +166,40 @@ subtest 'bad domain' => sub {
 
 subtest 'bad type' => sub {
 
+    my $target = 'https://developers.facebook.com/tools/debug/examples/bad_type';
+
+    my $error_code    = 1611007;
+    my $error_type    = 'Exception';
+    my $error_message = "Object at URL 'https://developers.facebook.com/tools/debug/examples/bad_type' is invalid because the configured 'og:type' of 'paul isn't a type' is invalid.";
+
     send_request {
 
-        my $target_url = 'https://developers.facebook.com/tools/debug/examples/bad_type';
         my $fb = Facebook::OpenGraph->new;
-        throws_ok sub { $fb->check_object($target_url) }, qr/1611007:- Exception:Object at URL 'https:\/\/developers.facebook.com\/tools\/debug\/examples\/bad_type' is invalid because the configured 'og:type' of 'paul isn't a type' is invalid\./, 'exception';
+        throws_ok sub { $fb->check_object($target) }, qr/$error_code:- $error_type:$error_message/, 'exception';
 
     } receive_request {
 
         my %args = @_;
-        is $args{method}, 'POST', 'HTTP POST method';
-        is_deeply $args{headers}, [], 'no particular header';
-        is_deeply $args{content}, +{
-            id     => 'https://developers.facebook.com/tools/debug/examples/bad_type',
-            scrape => 'true',
-        };
-        my $uri = $args{url};
-        is $uri->path, '/', 'path';
-        is_deeply +{$uri->query_form}, +{}, 'query parameter';
+        is_deeply(
+            \%args,
+            +{
+                headers => [],
+                method  => 'POST',
+                url     => 'https://graph.facebook.com/',
+                content => +{
+                    id     => $target,
+                    scrape => 'true',
+                },
+            },
+            'args'
+        );
 
         return +{
             content => encode_json(+{
                 error => +{
-                    code    => 1611007,
-                    type    => "Exception",
-                    message => "Object at URL 'https://developers.facebook.com/tools/debug/examples/bad_type' is invalid because the configured 'og:type' of 'paul isn't a type' is invalid.",
+                    code    => $error_code,
+                    type    => $error_type,
+                    message => $error_message,
                 },
             }),
             message => 'Internal Server Error',
@@ -181,6 +212,8 @@ subtest 'bad type' => sub {
 };
 
 subtest 'missing property' => sub {
+        
+    my $target = 'https://developers.facebook.com/tools/debug/examples/missing_property';
 
     my $val = +{
         url   => 'https://developers.facebook.com/tools/debug/examples/missing_property',
@@ -192,23 +225,27 @@ subtest 'missing property' => sub {
 
     send_request {
 
-        my $target_url = 'https://developers.facebook.com/tools/debug/examples/missing_property';
         my $fb = Facebook::OpenGraph->new;
-        my $response = $fb->check_object($target_url);
+        my $response = $fb->check_object($target);
+
         is_deeply $response, $val, 'result';
 
     } receive_request {
 
         my %args = @_;
-        is $args{method}, 'POST', 'HTTP POST method';
-        is_deeply $args{headers}, [], 'no particular header';
-        is_deeply $args{content}, +{
-            id     => 'https://developers.facebook.com/tools/debug/examples/missing_property',
-            scrape => 'true',
-        };
-        my $uri = $args{url};
-        is $uri->path, '/', 'path';
-        is_deeply +{$uri->query_form}, +{}, 'query parameter';
+        is_deeply(
+            \%args,
+            +{
+                headers => [],
+                method  => 'POST',
+                url     => 'https://graph.facebook.com/',
+                content => +{
+                    id     => $target,
+                    scrape => 'true',
+                },
+            },
+            'args'
+        );
 
         return +{
             status  => 200,
@@ -222,6 +259,8 @@ subtest 'missing property' => sub {
 };
 
 subtest 'invalid property' => sub {
+        
+    my $target = 'https://developers.facebook.com/tools/debug/examples/invalid_property';
 
     my $val = +{
         updated_time => '2012-11-24T15:54:27+0000',
@@ -241,24 +280,27 @@ subtest 'invalid property' => sub {
 
     send_request {
 
-        my $target_url = 'https://developers.facebook.com/tools/debug/examples/invalid_property';
         my $fb = Facebook::OpenGraph->new;
-        my $response = eval { $fb->check_object($target_url); };
+        my $response = eval { $fb->check_object($target); };
 
         is_deeply $response, $val, 'response';
 
     } receive_request {
 
         my %args = @_;
-        is $args{method}, 'POST', 'HTTP POST method';
-        is_deeply $args{headers}, [], 'no particular header';
-        is_deeply $args{content}, +{
-            id     => 'https://developers.facebook.com/tools/debug/examples/invalid_property',
-            scrape => 'true',
-        };
-        my $uri = $args{url};
-        is $uri->path, '/', 'path';
-        is_deeply +{$uri->query_form}, +{}, 'query parameter';
+        is_deeply(
+            \%args,
+            +{
+                headers => [],
+                method  => 'POST',
+                url     => 'https://graph.facebook.com/',
+                content => +{
+                    id     => $target,
+                    scrape => 'true',
+                },
+            },
+            'args'
+        );
 
         return +{
             status  => 200,
@@ -271,7 +313,5 @@ subtest 'invalid property' => sub {
 
 
 };
-
-
 
 done_testing;

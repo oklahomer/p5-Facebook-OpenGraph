@@ -8,6 +8,7 @@ use t::Util;
 use JSON::XS qw(decode_json encode_json);
 
 subtest 'w/out token' => sub {
+
         my $fb = Facebook::OpenGraph->new;
         my $batch_queries = [
             +{method => 'GET', relative_url => 'zuck'},
@@ -18,6 +19,37 @@ subtest 'w/out token' => sub {
 };
 
 subtest 'w/ valid token' => sub {
+
+    my $zuck = +{
+        link       => 'http://www.facebook.com/zuck',
+        name       => 'Mark Zuckerberg',
+        locale     => 'en_US',
+        username   => 'zuck',
+        id         => 4,
+        first_name => 'Mark',
+        last_name  => 'Zuckerberg',
+        gender     => 'male',
+    };
+    my $oklahomer = +{
+        link => 'http://www.facebook.com/Oklahomer',
+        website => 'http://facebook-docs.oklahome.net/',
+        release_date => '2011-02-24',
+        name => 'Oklahomer',
+        description => 'Facebook etc....',
+        username => 'Oklahomer',
+        talking_about_count => 10390,
+        cover => {
+            source => 'http://sphotos-g.ak.fbcdn.net/hphotos-ak-snc6/s720x720/283711_500726406609334_431792850_n.jpg',
+            offset_y => 57,
+            cover_id => 500726406609334,
+        },
+        is_published => 'true',
+        category => 'Reference website',
+        about => 'http://facebook-docs.oklahome.net/',
+        id    => '204277149587596',
+        likes => 10126,
+    };
+
     send_request {
 
         my $fb = Facebook::OpenGraph->new(+{
@@ -31,35 +63,8 @@ subtest 'w/ valid token' => sub {
         is_deeply(
             $datam,
             [
-                +{
-                    link       => 'http://www.facebook.com/zuck',
-                    name       => 'Mark Zuckerberg',
-                    locale     => 'en_US',
-                    username   => 'zuck',
-                    id         => 4,
-                    first_name => 'Mark',
-                    last_name  => 'Zuckerberg',
-                    gender     => 'male',
-                },
-                +{
-                    link => 'http://www.facebook.com/Oklahomer',
-                    website => 'http://facebook-docs.oklahome.net/',
-                    release_date => '2011-02-24',
-                    name => 'Oklahomer',
-                    description => 'Facebook etc....',
-                    username => 'Oklahomer',
-                    talking_about_count => 10390,
-                    cover => {
-                        source => 'http://sphotos-g.ak.fbcdn.net/hphotos-ak-snc6/s720x720/283711_500726406609334_431792850_n.jpg',
-                        offset_y => 57,
-                        cover_id => 500726406609334,
-                    },
-                    is_published => 'true',
-                    category => 'Reference website',
-                    about => 'http://facebook-docs.oklahome.net/',
-                    id    => '204277149587596',
-                    likes => 10126,
-                }
+                $zuck,
+                $oklahomer,
             ],
             'datam'
         );
@@ -67,21 +72,31 @@ subtest 'w/ valid token' => sub {
     } receive_request {
 
         my %args = @_;
-        is $args{url}->as_string, 'https://graph.facebook.com/', 'url';
-        is $args{method}, 'POST', 'HTTP POST method';
-        is_deeply $args{headers}, ['Authorization', 'OAuth 123456789|XfSeFWB-0EQ0qyipMdmNpJEAuPk'], 'header';
         is_deeply(
-            decode_json($args{content}->{batch}),
+            decode_json(delete $args{content}->{batch}),
             [
                 +{
+                    method       => 'GET',
                     relative_url => 'zuck',
-                    method       => 'GET'
                 },
                 +{
+                    method       => 'GET',
                     relative_url => 'Oklahomer',
-                    method       => 'GET'},
+                },
             ],
-            'content'
+            'batch'
+        );
+        is_deeply(
+            \%args,
+            +{
+                url     => 'https://graph.facebook.com/',
+                method  => 'POST',
+                headers => ['Authorization' => 'OAuth 123456789|XfSeFWB-0EQ0qyipMdmNpJEAuPk'],
+                content => +{
+                    access_token => '123456789|XfSeFWB-0EQ0qyipMdmNpJEAuPk',
+                },
+            },
+            'args'
         );
 
         return +{
@@ -121,16 +136,7 @@ subtest 'w/ valid token' => sub {
                             value => "no-cache"
                         }
                     ],
-                    body => encode_json(+{
-                        id         => 4,
-                        name       => "Mark Zuckerberg",
-                        first_name => "Mark",
-                        last_name  => "Zuckerberg",
-                        link => "http://www.facebook.com/zuck",
-                        username => "zuck",
-                        gender => "male",
-                        locale => "en_US"
-                    }),
+                    body => encode_json($zuck),
                 },
                 {
                     code => 200,
@@ -164,25 +170,7 @@ subtest 'w/ valid token' => sub {
                             value => "no-cache"
                         }
                     ],
-                    body => encode_json(+{
-                        name => "Oklahomer",
-                        is_published => "true",
-                        website => "http://facebook-docs.oklahome.net/",
-                        username => "Oklahomer",
-                        description => "Facebook etc....",
-                        about => "http://facebook-docs.oklahome.net/",
-                        release_date => "2011-02-24",
-                        talking_about_count => 10390,
-                        category => "Reference website",
-                        id => 204277149587596,
-                        link => "http://www.facebook.com/Oklahomer",
-                        likes => 10126,
-                        cover => +{
-                            cover_id => 500726406609334,
-                            source   => "http://sphotos-g.ak.fbcdn.net/hphotos-ak-snc6/s720x720/283711_500726406609334_431792850_n.jpg",
-                            offset_y => 57
-                        },
-                    }),
+                    body => encode_json($oklahomer),
                 }
             ]),
         }

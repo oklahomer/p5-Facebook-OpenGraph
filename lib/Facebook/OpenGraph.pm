@@ -142,10 +142,10 @@ sub batch {
     for my $res_ref (@$responses_ref) {
         my @headers  = map { $_->{name} => $_->{value} } @{$res_ref->{headers}};
         my $response = Facebook::OpenGraph::Response->new(+{
-            code     => $res_ref->{code},
-            message  => $res_ref->{message},
-            headers  => \@headers,
-            content  => $res_ref->{body},
+            code    => $res_ref->{code},
+            message => $res_ref->{message},
+            headers => \@headers,
+            content => $res_ref->{body},
         });
         croak $response->error_string unless $response->is_success;
         push @datam, $response->as_hashref;
@@ -182,11 +182,13 @@ sub fql {
 # Facebook Query Language (FQL): Multi-query
 # https://developers.facebook.com/docs/reference/fql/#multi
 sub bulk_fql {
-    my ($self, $batch) = @_;
+    my $self  = shift;
+    my $batch = shift;
+
     my $param_ref = +{
         q => encode_json($batch),
     };
-    return $self->request('GET', 'fql', $param_ref)->as_hashref;
+    return $self->request('GET', 'fql', $param_ref, @_)->as_hashref;
 }
 
 sub publish {
@@ -264,10 +266,10 @@ sub request {
             content => $content,
         );
     my $response = Facebook::OpenGraph::Response->new(+{
-        code     => $res_status,
-        message  => $res_msg,
-        headers  => $res_headers,
-        content  => $res_content,
+        code    => $res_status,
+        message => $res_msg,
+        headers => $res_headers,
+        content => $res_content,
     });
     croak $response->error_string unless $response->is_success;
 

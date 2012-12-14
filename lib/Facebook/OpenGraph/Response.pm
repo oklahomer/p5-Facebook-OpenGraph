@@ -10,9 +10,9 @@ sub new {
     return bless $args, $class;
 }
 
-sub code     { shift->{code}    }
-sub message  { shift->{message} }
-sub content  { shift->{content} }
+sub code    { shift->{code}    }
+sub message { shift->{message} }
+sub content { shift->{content} }
 
 sub is_success {
     my $self = shift;
