@@ -37,6 +37,8 @@ sub video_uri {
     return URI->new_abs($path, 'https://graph-video.facebook.com/');
 }
 
+# Using the signed_request Parameter: Step 1. Parse the signed_request
+# https://developers.facebook.com/docs/howtos/login/signed-request/#step1
 sub parse_signed_request {
     my ($self, $signed_request) = @_;
     croak 'signed_request is not given' unless $signed_request;
@@ -141,12 +143,9 @@ sub batch {
     my @datam = ();
     for my $res_ref (@$responses_ref) {
         my @headers  = map { $_->{name} => $_->{value} } @{$res_ref->{headers}};
-        my $response = Facebook::OpenGraph::Response->new(+{
-            code    => $res_ref->{code},
-            message => $res_ref->{message},
-            headers => \@headers,
-            content => $res_ref->{body},
-        });
+        my $response = $self->create_response(
+            $res_ref->{code}, $res_ref->{message}, \@headers, $res_ref->{body},
+        );
         croak $response->error_string unless $response->is_success;
         push @datam, $response->as_hashref;
     }
@@ -265,15 +264,23 @@ sub request {
             headers => $headers,
             content => $content,
         );
-    my $response = Facebook::OpenGraph::Response->new(+{
-        code    => $res_status,
-        message => $res_msg,
-        headers => $res_headers,
-        content => $res_content,
-    });
+
+    my $response = $self->create_response(
+        $res_status, $res_msg, $res_headers, $res_content
+    );
     croak $response->error_string unless $response->is_success;
 
     return $response;
+}
+
+sub create_response {
+    my ($self, $code, $message, $headers, $content) = @_;
+    return Facebook::OpenGraph::Response->new(+{
+        code    => $code,
+        message => $message,
+        headers => $headers,
+        content => $content,
+    });
 }
 
 sub prep_param {
