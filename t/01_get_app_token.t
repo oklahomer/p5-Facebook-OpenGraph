@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use Test::More;
+use Test::Exception;
 use Facebook::OpenGraph;
 use URI;
 use t::Util;
@@ -9,8 +10,8 @@ subtest 'get' => sub {
     send_request {
 
         my $fb = Facebook::OpenGraph->new(+{
-            app_id       => 123456789,
-            secret       => 'secret',
+            app_id => 123456789,
+            secret => 'secret',
         });
         my $token = $fb->get_app_token;
         is $token, '123456789|SSSeFWB-0EQ0qyipMdmNpJJJJjk', 'token';
@@ -45,6 +46,38 @@ subtest 'get' => sub {
         };
 
     };
+};
+
+subtest 'w/o secret key' => sub {
+        
+    my $fb = Facebook::OpenGraph->new(+{
+        app_id => 123456789,
+    });
+
+    throws_ok(
+        sub {
+            my $token = $fb->get_app_token;
+        },
+        qr/app_id and secret must be set /,
+        'secret key',
+    );
+    
+};
+
+subtest 'w/o secret key' => sub {
+        
+    my $fb = Facebook::OpenGraph->new(+{
+        secret => 'secret',
+    });
+
+    throws_ok(
+        sub {
+            my $token = $fb->get_app_token;
+        },
+        qr/app_id and secret must be set /,
+        'secret key',
+    );
+    
 };
 
 done_testing;

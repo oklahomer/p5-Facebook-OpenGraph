@@ -4,6 +4,7 @@ use Test::More;
 use Facebook::OpenGraph;
 use URI;
 use t::Util;
+use JSON::XS qw(encode_json);
 use YAML qw(LoadFile);
 
 subtest 'field expansion' => sub {
@@ -109,6 +110,33 @@ subtest 'field expansion' => sub {
         };
 
     };
+};
+
+subtest 'w/ other params' => sub {
+
+    send_request {
+
+        my $fb = Facebook::OpenGraph->new;
+        my $fields = LoadFile('t/resource/fields.yaml');
+        my $user = $fb->fetch('/me', +{fields => $fields, locale => 'ja_JP'});
+
+    } receive_request {
+
+        my %args  = @_;
+        my $uri   = $args{url};
+        my %query = $uri->query_form;
+        ok $query{locale}, 'locale';
+        ok $query{fields}, 'fields';
+
+        return +{
+            status  => 200,
+            headers => [],
+            message => 'OK',
+            content => encode_json({data => 'dummy'}),
+        }
+
+    };
+
 };
 
 done_testing;

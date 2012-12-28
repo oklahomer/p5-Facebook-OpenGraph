@@ -15,7 +15,7 @@ sub send_request (&@) {
     no warnings 'redefine';
     local *Furl::HTTP::request = sub {
         shift;
-        my $ret  = $mock->(@_);
+        my $ret = $mock->(@_);
 
         my $content = '';
         my $headers = [];
@@ -23,14 +23,14 @@ sub send_request (&@) {
             # should be json formatted
             $content = encode_json($ret->{content});
             $headers = [
-                'Content-Type'   => 'application/json; charset=UTF-8',
+                'Content-Type' => 'application/json; charset=UTF-8',
             ];
         }
         else {
             # mostly for access_token
             $content = $ret->{content};
             $headers = [
-                'Content-Type'   => 'text/plain; charset=UTF-8',
+                'Content-Type' => 'text/plain; charset=UTF-8',
             ];
         }
         push @$headers, 'Content-Length' => length($content);

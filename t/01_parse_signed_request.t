@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use Test::More;
+use Test::Exception;
 use Facebook::OpenGraph;
 
 subtest 'signed_request' => sub {
@@ -16,6 +17,21 @@ subtest 'signed_request' => sub {
     };
 
     is_deeply $datam, $expected_datam, 'datam';
+
+};
+
+subtest 'w/o secret key' => sub {
+
+    my $signed_request = "vlXgu64BQGFSQrY0ZcJBZASMvYvTHu9GQ0YM9rjPSso.eyJhbGdvcml0aG0iOiJITUFDLVNIQTI1NiIsIjAiOiJwYXlsb2FkIn0";
+    my $fb = Facebook::OpenGraph->new;
+
+    throws_ok(
+        sub {
+            my $datam = $fb->parse_signed_request($signed_request);
+        },
+        qr/secret key must be set/,
+        'secret key is mandatory',
+    );
 
 };
 

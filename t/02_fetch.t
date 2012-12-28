@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use Test::More;
+use Test::Exception;
 use Facebook::OpenGraph;
 use URI;
 use t::Util;
@@ -92,6 +93,37 @@ subtest 'with fields' => sub {
         };
 
     };
+};
+
+subtest 'not found' => sub {
+
+    send_request {
+        my $fb = Facebook::OpenGraph->new;
+        throws_ok(
+            sub {
+                my $user = $fb->fetch('hhhhhhhhhhsssssssss');
+            },
+            qr/803:- OAuthException:\(#803\) Some of the aliases you requested do not exist: hhhhhhhhhhsssssssss/,
+            'user not found',
+        );
+    } receive_request {
+
+        return +{
+            headers => [],
+            status  => 404,
+            message => 'Not Found',
+            content => +{
+                error => +{
+                    code    => 803,
+                    type    => 'OAuthException',
+                    message => '(#803) Some of the aliases you requested do not exist: hhhhhhhhhhsssssssss',
+                    error_subcode => '',
+                },
+            },
+        };
+
+    };
+
 };
 
 done_testing;
