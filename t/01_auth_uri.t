@@ -7,11 +7,11 @@ use Facebook::OpenGraph;
 subtest 'correct' => sub {
 
     my $fb = Facebook::OpenGraph->new(+{
-        app_id => 1234567,
+        app_id       => 1234567,
+        redirect_uri => 'https://sample.com/auth_cb',
     });
     my $url = $fb->auth_uri(+{
         scope => [qw/email publish_actions/],
-        redirect_uri => 'https://sample.com/auth_cb',
     });
 
     my $uri = URI->new($url);
@@ -34,11 +34,10 @@ subtest 'correct' => sub {
 subtest 'w/o scope' => sub {
 
     my $fb = Facebook::OpenGraph->new(+{
-        app_id => 1234567,
-    });
-    my $url = $fb->auth_uri(+{
+        app_id       => 1234567,
         redirect_uri => 'https://sample.com/auth_cb',
     });
+    my $url = $fb->auth_uri;
 
     ok $url, 'scope is optional';
 
@@ -56,7 +55,7 @@ subtest 'w/o redirect_uri' => sub {
                 scope => [qw/email publish_actions/],
             });
         },
-        qr/redirect_uri is not given/,
+        qr/redirect_uri and app_id must be set/,
         'scopre value is hashref'
     );
 
@@ -65,14 +64,14 @@ subtest 'w/o redirect_uri' => sub {
 subtest 'wrong scopre value' => sub {
 
     my $fb = Facebook::OpenGraph->new(+{
-        app_id => 1234567,
+        app_id       => 1234567,
+        redirect_uri => 'https://sample.com/auth_cb',
     });
 
     throws_ok(
         sub {
             my $url = $fb->auth_uri(+{
                 scope => +{ publish_actions => 1, email => 0 },
-                redirect_uri => 'https://sample.com/auth_cb',
             });
         },
         qr/scope must be string or array ref/,

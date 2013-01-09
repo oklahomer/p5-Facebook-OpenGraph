@@ -26,6 +26,7 @@ sub secret       { shift->{secret}                 }
 sub ua           { shift->{ua} ||= Furl::HTTP->new }
 sub namespace    { shift->{namespace}              }
 sub access_token { shift->{access_token}           }
+sub redirect_uri { shift->{redirect_uri}           }
 
 sub uri {
     my ($self, $path) = @_;
@@ -48,7 +49,8 @@ sub parse_signed_request {
     my $sig   = urlsafe_b64decode($enc_sig);
     my $datam = decode_json(urlsafe_b64decode($payload));
 
-    croak 'algorithm must be HMAC-SHA256' unless uc($datam->{algorithm}) eq 'HMAC-SHA256';
+    croak 'algorithm must be HMAC-SHA256'
+        unless uc($datam->{algorithm}) eq 'HMAC-SHA256';
 
     my $expected_sig = hmac_sha256($payload, $self->secret);
     croak 'Signature does not match' unless $sig eq $expected_sig;
@@ -61,15 +63,17 @@ sub parse_signed_request {
 sub auth_uri {
     my ($self, $param_ref) = @_;
     $param_ref ||= +{};
-    croak 'redirect_uri is not given' unless $param_ref->{redirect_uri};
+    croak 'redirect_uri and app_id must be set'
+        unless $self->redirect_uri && $self->app_id;
 
     if (my $scope_ref = ref $param_ref->{scope}) {
         $param_ref->{scope} =
             $scope_ref eq 'ARRAY' ? join ',', @{$param_ref->{scope}}
                                   : croak 'scope must be string or array ref';
     }
-    $param_ref->{client_id} ||= $self->app_id;
-    $param_ref->{display}   ||= 'page';
+    $param_ref->{redirect_uri} = $self->redirect_uri;
+    $param_ref->{client_id}    = $self->app_id;
+    $param_ref->{display}      ||= 'page';
     my $uri = $self->uri('https://facebook.com/dialog/oauth/');
     $uri->query_form($param_ref);
 
@@ -86,22 +90,45 @@ sub set_app_token {
 sub get_app_token {
     my $self = shift;
 
-    croak 'app_id and secret must be set'
-        unless $self->app_id && $self->secret;
+    croak 'app_id and secret must be set' unless $self->app_id && $self->secret;
+    my $token_ref = $self->_get_token(+{grant_type => 'client_credentials'});
+    return $token_ref->{access_token};
+}
+
+sub get_user_token_by_code {
+    my ($self, $code) = @_;
+
+    croak 'code is not given' unless $code;
+    croak 'redirect_uri must be set' unless $self->redirect_uri;
 
     my $query_ref = +{
+        redirect_uri  => $self->redirect_uri,
+        code          => $code,
+    };
+    my $token_ref = $self->_get_token($query_ref);
+    croak 'expires is not returned' unless $token_ref->{expires};
+
+    return $token_ref;
+}
+
+sub _get_token {
+    my ($self, $param_ref) = @_;
+
+    $param_ref = +{
+        %$param_ref,
         client_id     => $self->app_id,
         client_secret => $self->secret,
-        grant_type    => 'client_credentials',
     };
-    my $response = $self->request('GET', '/oauth/access_token', $query_ref);
 
+    my $response = $self->request('GET', '/oauth/access_token', $param_ref);
     # Get app_token from response content
-    # content should be access_token=12345|QwerTy formatted
+    # content should be access_token=12345|QwerTy&expires=5183951 formatted
     my $res_content = $response->content;
-    my $token = URI->new('?'.$res_content)->query_param('access_token');
-    $token ? return $token
-           : croak 'can\'t get app_token properly: '.$res_content;
+    my $token_ref = +{URI->new('?'.$res_content)->query_form};
+    croak 'can\'t get app_token properly: '.$res_content
+        unless $token_ref->{access_token};
+
+    return $token_ref;
 }
 
 sub fetch {
@@ -175,7 +202,7 @@ sub batch_fast {
 sub fql {
     my $self  = shift;
     my $query = shift;
-    return $self->request('GET', 'fql', +{q => $query}, @_)->as_hashref;
+    return $self->fetch('/fql', +{q => $query}, @_);
 }
 
 # Facebook Query Language (FQL): Multi-query
