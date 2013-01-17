@@ -5,11 +5,17 @@ use Carp qw(croak);
 use JSON::XS qw(decode_json);
 
 sub new {
-    my ($class, $args) = @_;
+    my $class = shift;
+    my $args  = shift || +{};
 
-    return bless $args, $class;
+    return bless +{
+        code    => $args->{code},
+        message => $args->{message},
+        content => $args->{content},
+    }, $class;
 }
 
+# accessors
 sub code    { shift->{code}    }
 sub message { shift->{message} }
 sub content { shift->{content} }
@@ -17,7 +23,7 @@ sub content { shift->{content} }
 sub is_success {
     my $self = shift;
     # code 2XX or 304
-    return substr($self->code, 0, 1) eq '2' || $self->code == 304;
+    return substr($self->code, 0, 1) == 2 || $self->code == 304;
 }
 
 # Errors
@@ -43,7 +49,8 @@ sub as_hashref {
 
 sub is_modified {
     my $self = shift;
-    return $self->code != 304 || $self->message ne 'Not Modified';
+    my $not_modified = $self->code == 304  &&  $self->message eq 'Not Modified';
+    return !$not_modified;
 }
 
 1;

@@ -4,7 +4,6 @@ use warnings;
 use Facebook::OpenGraph::Response;
 use HTTP::Request::Common;
 use URI;
-use URI::QueryParam;
 use Furl::HTTP;
 use Data::Recursive::Encode;
 use JSON::XS qw(encode_json decode_json);
@@ -18,15 +17,24 @@ our $VERSION = '0.01';
 sub new {
     my $class = shift;
     my $args  = shift || +{};
-    return bless $args, $class;
+
+    return bless +{
+        app_id       => $args->{app_id},
+        secret       => $args->{secret},
+        ua           => $args->{ua} || Furl::HTTP->new,
+        namespace    => $args->{namespace},
+        access_token => $args->{access_token},
+        redirect_uri => $args->{redirect_uri},
+    }, $class;
 }
 
-sub app_id       { shift->{app_id}                 }
-sub secret       { shift->{secret}                 }
-sub ua           { shift->{ua} ||= Furl::HTTP->new }
-sub namespace    { shift->{namespace}              }
-sub access_token { shift->{access_token}           }
-sub redirect_uri { shift->{redirect_uri}           }
+# accessors
+sub app_id       { shift->{app_id}       }
+sub secret       { shift->{secret}       }
+sub ua           { shift->{ua}           }
+sub namespace    { shift->{namespace}    }
+sub access_token { shift->{access_token} }
+sub redirect_uri { shift->{redirect_uri} }
 
 sub uri {
     my ($self, $path) = @_;
@@ -95,6 +103,8 @@ sub get_app_token {
     return $token_ref->{access_token};
 }
 
+# Login for Server-side Apps: Step 6. Exchange the code for an Access Token
+# https://developers.facebook.com/docs/howtos/login/server-side-login/#step6
 sub get_user_token_by_code {
     my ($self, $code) = @_;
 
@@ -102,8 +112,8 @@ sub get_user_token_by_code {
     croak 'redirect_uri must be set' unless $self->redirect_uri;
 
     my $query_ref = +{
-        redirect_uri  => $self->redirect_uri,
-        code          => $code,
+        redirect_uri => $self->redirect_uri,
+        code         => $code,
     };
     my $token_ref = $self->_get_token($query_ref);
     croak 'expires is not returned' unless $token_ref->{expires};
@@ -122,7 +132,7 @@ sub _get_token {
 
     my $response = $self->request('GET', '/oauth/access_token', $param_ref);
     # Get app_token from response content
-    # content should be access_token=12345|QwerTy&expires=5183951 formatted
+    # content should be 'access_token=12345|QwerTy&expires=5183951' formatted
     my $res_content = $response->content;
     my $token_ref = +{URI->new('?'.$res_content)->query_form};
     croak 'can\'t get app_token properly: '.$res_content
@@ -131,9 +141,16 @@ sub _get_token {
     return $token_ref;
 }
 
-sub fetch {
+sub get {
     return shift->request('GET', @_)->as_hashref;
 }
+
+sub post {
+    return shift->request('POST', @_)->as_hashref;
+}
+
+*fetch   = \&get;
+*publish = \&post;
 
 # Using ETags
 # https://developers.facebook.com/docs/reference/ads-api/etags-reference/
@@ -142,7 +159,8 @@ sub fetch_with_etag {
 
     # Attach ETag value to header
     # Returns status 304 w/o contnet or status 200 w/ modified content
-    my $response = $self->request('GET', $uri, $param_ref, ['IF-None-Match' => $etag]);
+    my $header   = ['IF-None-Match' => $etag];
+    my $response = $self->request('GET', $uri, $param_ref, $header);
 
     return $response->is_modified ? $response->as_hashref
                                   : undef;
@@ -194,7 +212,7 @@ sub batch_fast {
         batch        => encode_json($batch),
     };
 
-    return $self->request('POST', '', $query, @_)->as_hashref;
+    return $self->post('', $query, @_);
 }
 
 # Facebook Query Language (FQL)
@@ -202,7 +220,7 @@ sub batch_fast {
 sub fql {
     my $self  = shift;
     my $query = shift;
-    return $self->fetch('/fql', +{q => $query}, @_);
+    return $self->get('/fql', +{q => $query}, @_);
 }
 
 # Facebook Query Language (FQL): Multi-query
@@ -211,14 +229,7 @@ sub bulk_fql {
     my $self  = shift;
     my $batch = shift;
 
-    my $param_ref = +{
-        q => encode_json($batch),
-    };
-    return $self->request('GET', 'fql', $param_ref, @_)->as_hashref;
-}
-
-sub publish {
-    return shift->request('POST', @_)->as_hashref;
+    return $self->fql(encode_json($batch), @_);
 }
 
 # Graph API: Deleting
@@ -236,7 +247,7 @@ sub delete {
     my $param_ref = +{
         method => 'delete',
     };
-    return $self->request('POST', $path, $param_ref)->as_hashref;
+    return $self->post($path, $param_ref);
 }
 
 sub request {
@@ -301,12 +312,9 @@ sub request {
 }
 
 sub create_response {
-    my ($self, $code, $message, $headers, $content) = @_;
+    my $self = shift;
     return Facebook::OpenGraph::Response->new(+{
-        code    => $code,
-        message => $message,
-        headers => $headers,
-        content => $content,
+        map {$_ => shift} qw/code message headers content/
     });
 }
 
@@ -353,6 +361,15 @@ sub prep_fields_recursive {
     }
 }
 
+# How-To: Publish an Action
+# https://developers.facebook.com/docs/technical-guides/opengraph/publish-action/#create
+sub publish_action {
+    my $self   = shift;
+    my $action = shift;
+    croak 'namespace is not set' unless $self->namespace;
+    return $self->post(sprintf('/me/%s:%s', $self->namespace, $action), @_);
+}
+
 # Updating Objects 
 # https://developers.facebook.com/docs/technical-guides/opengraph/defining-an-object/#update
 sub check_object {
@@ -361,7 +378,7 @@ sub check_object {
         id     => $target, # $target is object url or open graph object id
         scrape => 'true',
     };
-    return $self->request('POST', '', $param_ref)->as_hashref;
+    return $self->post('', $param_ref);
 }
 
 1;
