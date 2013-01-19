@@ -207,8 +207,18 @@ sub batch_fast {
     # You can specify individual token for each request
     # so you can act as several other users and/or pages.
     croak 'Top level access_token must be set' unless $self->access_token;
+
+    for my $q (@$batch) {
+        if ($q->{method} eq 'POST' && $q->{body}) {
+            my $body_ref = $self->prep_param($q->{body});
+            my $uri = URI->new;
+            $uri->query_form(%$body_ref);
+            $q->{body} = $uri->query;
+        }
+    }
+
     my $query = +{
-        access_token => $self->access_token || '',
+        access_token => $self->access_token,
         batch        => encode_json($batch),
     };
 
@@ -323,6 +333,11 @@ sub prep_param {
 
     $param_ref = Data::Recursive::Encode->encode_utf8($param_ref || +{});
 
+    # mostly for /APP_ID/accounts/test-users
+    if (my $perms = $param_ref->{permissions}) {
+        $param_ref->{permissions} = ref $perms ? join ',', @$perms : $perms;
+    }
+
     # Source parameter contains file path.
     # It must be an array ref to work w/ HTTP::Request::Common.
     if (my $path = $param_ref->{source}) {
@@ -368,6 +383,26 @@ sub publish_action {
     my $action = shift;
     croak 'namespace is not set' unless $self->namespace;
     return $self->post(sprintf('/me/%s:%s', $self->namespace, $action), @_);
+}
+
+# Test Users
+# https://developers.facebook.com/docs/test_users/
+sub create_test_users {
+    my $self         = shift;
+    my $settings_ref = shift;
+
+    $settings_ref = [$settings_ref] unless ref $settings_ref eq 'ARRAY';
+
+    my @settings = ();
+    for my $setting (@$settings_ref) {
+        push @settings, +{
+            method       => 'POST',
+            relative_url => sprintf('/%s/accounts/test-users', $self->app_id),
+            body         => $setting,
+        };
+    }
+
+    return $self->batch(\@settings);
 }
 
 # Updating Objects 
