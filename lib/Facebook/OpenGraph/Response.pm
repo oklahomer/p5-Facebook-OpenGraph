@@ -37,7 +37,14 @@ sub error_string {
 }
 
 sub as_json {
-    shift->content; # content is JSON formatted
+    my $self = shift;
+    if ((my $bool = $self->content) =~ m/^(true|false)$/) {
+        # Sometimes they return plain text
+        # saying 'true' or 'false' to indicate result.
+        # So make it JSON formatted for our convinience.
+        $self->{content} = sprintf('{"success" : "%s"}', $bool);
+    };
+    return $self->content; # content is JSON formatted
 }
 
 sub as_hashref {
