@@ -25,6 +25,7 @@ sub new {
         namespace    => $args->{namespace},
         access_token => $args->{access_token},
         redirect_uri => $args->{redirect_uri},
+        batch_limit  => $args->{batch_limit} || 50,
     }, $class;
 }
 
@@ -35,6 +36,7 @@ sub ua           { shift->{ua}           }
 sub namespace    { shift->{namespace}    }
 sub access_token { shift->{access_token} }
 sub redirect_uri { shift->{redirect_uri} }
+sub batch_limit  { shift->{batch_limit}  }
 
 sub uri {
     my ($self, $path) = @_;
@@ -186,13 +188,20 @@ sub batch {
 
     # Devide response content and create response objects that correspond to each request
     my @datam = ();
-    for my $res_ref (@$responses_ref) {
-        my @headers  = map { $_->{name} => $_->{value} } @{$res_ref->{headers}};
-        my $response = $self->create_response(
-            $res_ref->{code}, $res_ref->{message}, \@headers, $res_ref->{body},
-        );
-        croak $response->error_string unless $response->is_success;
-        push @datam, $response->as_hashref;
+    for my $r (@$responses_ref) {
+        for my $res_ref (@$r) {
+            my @headers  = map {
+                $_->{name} => $_->{value}
+            } @{$res_ref->{headers}};
+            my $response = $self->create_response(
+                $res_ref->{code},
+                $res_ref->{message},
+                \@headers,
+                $res_ref->{body},
+            );
+            croak $response->error_string unless $response->is_success;
+            push @datam, $response->as_hashref;
+        }
     }
 
     return \@datam;
@@ -208,21 +217,28 @@ sub batch_fast {
     # so you can act as several other users and/or pages.
     croak 'Top level access_token must be set' unless $self->access_token;
 
-    for my $q (@$batch) {
-        if ($q->{method} eq 'POST' && $q->{body}) {
-            my $body_ref = $self->prep_param($q->{body});
-            my $uri = URI->new;
-            $uri->query_form(%$body_ref);
-            $q->{body} = $uri->query;
+    # "We currently limit the number of requests which can be in a batch to 50"
+    my @responses = ();
+    while(my @queries = splice @$batch, 0, $self->batch_limit) {
+        for my $q (@queries) {
+            if ($q->{method} eq 'POST' && $q->{body}) {
+                my $body_ref = $self->prep_param($q->{body});
+                my $uri = URI->new;
+                $uri->query_form(%$body_ref);
+                $q->{body} = $uri->query;
+            }
         }
+        push @responses, $self->post(
+            '',
+            +{
+                access_token => $self->access_token,
+                batch        => encode_json(\@queries),
+            },
+            @_,
+        );
     }
 
-    my $query = +{
-        access_token => $self->access_token,
-        batch        => encode_json($batch),
-    };
-
-    return $self->post('', $query, @_);
+    return \@responses;
 }
 
 # Facebook Query Language (FQL)
@@ -266,7 +282,7 @@ sub request {
     $method    = uc $method;
     $uri       = $self->uri($uri) unless UNIVERSAL::isa($uri, 'URI');
     $param_ref = $self->prep_param(+{
-        $uri->query_form,
+        $uri->query_form(+{}),
         %{$param_ref || +{}},
     });
     $headers ||= [];
@@ -275,7 +291,6 @@ sub request {
 
     my $content = undef;
     if ($method eq 'POST') {
-        $uri->query_form(+{});
 
         if ($param_ref->{source}) {
             # post photo or video to /OBJECT_ID/(photos|videos)
