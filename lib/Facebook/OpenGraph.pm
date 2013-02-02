@@ -259,21 +259,24 @@ sub bulk_fql {
 }
 
 # Graph API: Deleting
-# https://developers.facebook.com/docs/reference/api/#deleting
+# https://developers.facebook.com/docs/reference/api/deleting/
 sub delete {
-    my ($self, $path) = @_;
+    my $self      = shift;
+    my $path      = shift;
+    my $param_ref = shift || +{};
 
     # Try DELETE method as described in document.
-    my $response = $self->request('DELETE', $path);
+    my $response = $self->request('DELETE', $path, $param_ref, @_);
     return $response->as_hashref if $response->is_success;
 
     # Sometimes sending DELETE method failes,
     # but POST method with method=delete works.
     # Weird...
-    my $param_ref = +{
+    $param_ref = +{
+        %$param_ref,
         method => 'delete',
     };
-    return $self->post($path, $param_ref);
+    return $self->post($path, $param_ref, @_);
 }
 
 sub request {
