@@ -5,7 +5,7 @@ our @EXPORT = qw(
     send_request receive_request
 ); 
 
-use JSON::XS;
+use JSON::XS qw(encode_json);
 use Furl::HTTP;
 use Furl::Response;
 use Plack::Request;
