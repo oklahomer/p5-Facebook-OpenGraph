@@ -26,6 +26,7 @@ sub new {
         access_token => $args->{access_token},
         redirect_uri => $args->{redirect_uri},
         batch_limit  => $args->{batch_limit} || 50,
+        is_beta      => $args->{is_beta} || 0,
     }, $class;
 }
 
@@ -37,15 +38,20 @@ sub namespace    { shift->{namespace}    }
 sub access_token { shift->{access_token} }
 sub redirect_uri { shift->{redirect_uri} }
 sub batch_limit  { shift->{batch_limit}  }
+sub is_beta      { shift->{is_beta}      }
 
 sub uri {
     my ($self, $path) = @_;
-    return URI->new_abs($path, 'https://graph.facebook.com/');
+    my $base = $self->is_beta ? 'https://graph.beta.facebook.com/'
+                              : 'https://graph.facebook.com/';
+    return URI->new_abs($path, $base);
 }
 
 sub video_uri {
     my ($self, $path) = @_;
-    return URI->new_abs($path, 'https://graph-video.facebook.com/');
+    my $base = $self->is_beta ? 'https://graph-video.beta.facebook.com/'
+                              : 'https://graph-video.facebook.com/';
+    return URI->new_abs($path, $base);
 }
 
 # Using the signed_request Parameter: Step 1. Parse the signed_request
@@ -84,7 +90,9 @@ sub auth_uri {
     $param_ref->{redirect_uri} = $self->redirect_uri;
     $param_ref->{client_id}    = $self->app_id;
     $param_ref->{display}      ||= 'page';
-    my $uri = $self->uri('https://facebook.com/dialog/oauth/');
+    my $base = $self->is_beta ? 'https://www.beta.facebook.com/'
+                              : 'https://www.facebook.com/';
+    my $uri = URI->new_abs('/dialog/oauth/', $base);
     $uri->query_form($param_ref);
 
     return $uri->as_string;

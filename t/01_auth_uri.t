@@ -6,29 +6,56 @@ use Facebook::OpenGraph;
 
 subtest 'correct' => sub {
 
-    my $fb = Facebook::OpenGraph->new(+{
-        app_id       => 1234567,
-        redirect_uri => 'https://sample.com/auth_cb',
-    });
-    my $url = $fb->auth_uri(+{
-        scope => [qw/email publish_actions/],
-    });
+    subtest 'production' => sub {
+        my $fb = Facebook::OpenGraph->new(+{
+            app_id       => 1234567,
+            redirect_uri => 'https://sample.com/auth_cb',
+        });
+        my $url = $fb->auth_uri(+{
+            scope => [qw/email publish_actions/],
+        });
+    
+        my $uri = URI->new($url);
+        is $uri->scheme, 'https', 'scheme';
+        is $uri->host, 'www.facebook.com', 'host';
+        is $uri->path, '/dialog/oauth/', 'path';
+        is_deeply(
+            +{$uri->query_form},
+            +{
+                redirect_uri =>'https://sample.com/auth_cb',
+                scope        => 'email,publish_actions',
+                display      => 'page',
+                client_id    => 1234567,
+            },
+            'query parameter',
+        );
+    };
 
-    my $uri = URI->new($url);
-    is $uri->scheme, 'https', 'scheme';
-    is $uri->host, 'facebook.com', 'host';
-    is $uri->path, '/dialog/oauth/', 'path';
-    is_deeply(
-        +{$uri->query_form},
-        +{
-            redirect_uri =>'https://sample.com/auth_cb',
-            scope        => 'email,publish_actions',
-            display      => 'page',
-            client_id    => 1234567,
-        },
-        'query parameter',
-    );
-
+    subtest 'beta tier' => sub {
+        my $fb = Facebook::OpenGraph->new(+{
+            app_id       => 1234567,
+            redirect_uri => 'https://sample.com/auth_cb',
+            is_beta      => 1,
+        });
+        my $url = $fb->auth_uri(+{
+            scope => [qw/email publish_actions/],
+        });
+    
+        my $uri = URI->new($url);
+        is $uri->scheme, 'https', 'scheme';
+        is $uri->host, 'www.beta.facebook.com', 'host';
+        is $uri->path, '/dialog/oauth/', 'path';
+        is_deeply(
+            +{$uri->query_form},
+            +{
+                redirect_uri =>'https://sample.com/auth_cb',
+                scope        => 'email,publish_actions',
+                display      => 'page',
+                client_id    => 1234567,
+            },
+            'query parameter',
+        );
+    };
 };
 
 subtest 'w/o scope' => sub {
