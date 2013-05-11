@@ -4,7 +4,7 @@ use Test::More;
 use Facebook::OpenGraph;
 use URI;
 use t::Util;
-use JSON::XS qw(encode_json);
+use JSON 2 qw(encode_json);
 use YAML qw(LoadFile);
 
 subtest 'field expansion' => sub {

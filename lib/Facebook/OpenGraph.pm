@@ -6,7 +6,7 @@ use HTTP::Request::Common;
 use URI;
 use Furl::HTTP;
 use Data::Recursive::Encode;
-use JSON::XS qw(encode_json decode_json);
+use JSON 2 qw(encode_json decode_json);
 use Carp qw(croak);
 use Digest::SHA qw(hmac_sha256);
 use MIME::Base64::URLSafe qw(urlsafe_b64decode);

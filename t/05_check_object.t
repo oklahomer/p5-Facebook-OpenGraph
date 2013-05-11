@@ -4,7 +4,7 @@ use Test::More;
 use Test::Exception;
 use Facebook::OpenGraph;
 use t::Util;
-use JSON::XS qw(encode_json);
+use JSON 2 qw(encode_json);
 
 # samples URLs are found at https://developers.facebook.com/tools/debug/examples/
 subtest 'good'  => sub {

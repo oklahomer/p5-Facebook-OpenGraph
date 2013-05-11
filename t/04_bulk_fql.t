@@ -4,7 +4,7 @@ use Test::More;
 use Facebook::OpenGraph;
 use URI;
 use t::Util;
-use JSON::XS qw(decode_json);
+use JSON 2 qw(decode_json);
 
 subtest 'multi query w/out dependencies' => sub {
     my $val = [

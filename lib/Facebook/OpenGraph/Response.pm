@@ -2,7 +2,7 @@ package Facebook::OpenGraph::Response;
 use strict;
 use warnings;
 use Carp qw(croak);
-use JSON::XS qw(decode_json);
+use JSON 2 qw(decode_json);
 
 sub new {
     my $class = shift;

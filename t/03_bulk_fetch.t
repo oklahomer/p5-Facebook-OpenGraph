@@ -3,7 +3,7 @@ use warnings;
 use Test::More;
 use Facebook::OpenGraph;
 use URI;
-use JSON::XS qw(encode_json decode_json);
+use JSON 2 qw(encode_json decode_json);
 use t::Util;
 
 subtest 'user' => sub {

@@ -5,7 +5,7 @@ use Test::Exception;
 use Facebook::OpenGraph;
 use URI;
 use t::Util;
-use JSON::XS qw(decode_json encode_json);
+use JSON 2 qw(decode_json encode_json);
 
 
 subtest 'w/out token' => sub {
