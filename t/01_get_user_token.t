@@ -32,6 +32,10 @@ subtest 'success' => sub {
             'token',
         );
 
+        is $fb->access_token, undef, 'access_token';
+        $fb->set_access_token($token_ref->{access_token});        
+        is $fb->access_token, $token, 'set_access_token';
+
     } receive_request {
 
         my %args = @_;

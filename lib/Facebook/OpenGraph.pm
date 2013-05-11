@@ -98,9 +98,9 @@ sub auth_uri {
     return $uri->as_string;
 }
 
-sub set_app_token {
+sub set_access_token {
     my ($self, $token) = @_;
-    return $self->{access_token} = $token || $self->get_app_token;
+    $self->{access_token} = $token;
 }
 
 # Login as an App: Step 1. Obtain an App Access Token
