@@ -6,7 +6,7 @@ use t::Util;
 
 subtest 'create test user' => sub {
 
-    my $datam = +{
+    my $datum_ref = +{
         id           => 123456789,
         access_token => '5678uiop',
         login_url    => 'https://www.facebook.com/platform/test_account_login?user_id=123456789&n=asdfghh',
@@ -28,7 +28,7 @@ subtest 'create test user' => sub {
                 permissions => 'read_stream',
             },
         );
-        is_deeply $response, $datam, 'datam';
+        is_deeply $response, $datum_ref, 'datum';
 
     } receive_request {
 
@@ -55,7 +55,7 @@ subtest 'create test user' => sub {
             headers => [],
             status  => 200,
             message => 'OK',
-            content => $datam,
+            content => $datum_ref,
         };
 
     }

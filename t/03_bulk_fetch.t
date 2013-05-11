@@ -37,9 +37,9 @@ subtest 'user' => sub {
             secret       => 'foobarbuzz',
             access_token => 'dfasdfasdfasdfa',
         });
-        my $datam = $fb->bulk_fetch([qw(4 go.hagiwara)]);
+        my $data_ref = $fb->bulk_fetch([qw(4 go.hagiwara)]);
         
-        is_deeply $datam, [$zuck, $hagiwara], 'datam';
+        is_deeply $data_ref, [$zuck, $hagiwara], 'data';
 
     } receive_request {
 

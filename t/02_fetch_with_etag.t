@@ -43,7 +43,7 @@ subtest 'etag' => sub {
 
 subtest 'modified or invalid etag' => sub {
 
-    my $datam = +{
+    my $datum_ref = +{
         id         => 4,
         name       => 'Mark Zuckerberg',
         locale     => 'en_US',
@@ -60,7 +60,7 @@ subtest 'modified or invalid etag' => sub {
         my $fb   = Facebook::OpenGraph->new;
         my $user = $fb->fetch_with_etag('zuck', +{}, $etag);
 
-        is_deeply $user, $datam, 'datam';
+        is_deeply $user, $datum_ref, 'datum';
 
     } receive_request {
 
@@ -82,7 +82,7 @@ subtest 'modified or invalid etag' => sub {
             headers => [],
             status  => 200,
             message => 'OK',
-            content => $datam,
+            content => $datum_ref,
         };
 
     };

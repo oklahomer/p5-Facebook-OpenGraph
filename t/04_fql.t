@@ -8,7 +8,7 @@ use t::Util;
 subtest 'user' => sub {
 
     my $app_id = 127497087322461;
-    my $datam = +{
+    my $datum_ref = +{
         display_name => 'app',
         icon_url => 'http://photos-c.ak.fbcdn.net/photos-ak-snc7/v43/45/'.$app_id.'/app_2_'.$app_id.'_1287.gif',
     };
@@ -19,7 +19,7 @@ subtest 'user' => sub {
         my $fb = Facebook::OpenGraph->new;
         my $res = $fb->fql($query);
 
-        is_deeply $res->{data}, [$datam], 'datam';
+        is_deeply $res->{data}, [$datum_ref], 'data';
 
     } receive_request {
 
@@ -42,7 +42,7 @@ subtest 'user' => sub {
             message => 'OK',
             content => +{
                 data => [
-                    $datam,
+                    $datum_ref,
                 ],
             }
         };

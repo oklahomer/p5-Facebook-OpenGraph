@@ -10,13 +10,13 @@ subtest 'signed_request' => sub {
     my $fb = Facebook::OpenGraph->new(+{
         secret => 'secret'
     });
-    my $datam = $fb->parse_signed_request($signed_request);
-    my $expected_datam = +{
+    my $datum_ref = $fb->parse_signed_request($signed_request);
+    my $expected_datum_ref = +{
         0           => 'payload',
         'algorithm' => 'HMAC-SHA256',
     };
 
-    is_deeply $datam, $expected_datam, 'datam';
+    is_deeply $datum_ref, $expected_datum_ref, 'data';
 
 };
 
@@ -27,7 +27,7 @@ subtest 'w/o secret key' => sub {
 
     throws_ok(
         sub {
-            my $datam = $fb->parse_signed_request($signed_request);
+            my $datum_ref = $fb->parse_signed_request($signed_request);
         },
         qr/secret key must be set/,
         'secret key is mandatory',

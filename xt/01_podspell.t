@@ -12,4 +12,10 @@ fql
 gmail
 namespace
 ua
+url
+Facebook's
+OAuth
+ETag
+customizability
 uri
+JSON

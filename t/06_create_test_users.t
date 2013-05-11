@@ -7,7 +7,7 @@ use JSON::XS qw(encode_json);
 
 subtest 'create test user' => sub {
 
-    my $datam = [
+    my $data_ref = [
         +{
             id           => 123456789,
             access_token => '5678uiop',
@@ -43,7 +43,7 @@ subtest 'create test user' => sub {
                 installed   => 'true',
             },
         ]);
-        is_deeply $res, $datam, 'datam';
+        is_deeply $res, $data_ref, 'data';
 
     } receive_request {
 
@@ -60,12 +60,12 @@ subtest 'create test user' => sub {
                 +{
                     code    => 200,
                     headers => [],
-                    body    => encode_json($datam->[0]),
+                    body    => encode_json($data_ref->[0]),
                 },
                 +{
                     code    => 200,
                     headers => [],
-                    body    => encode_json($datam->[1]),
+                    body    => encode_json($data_ref->[1]),
                 }
             ]),
         };

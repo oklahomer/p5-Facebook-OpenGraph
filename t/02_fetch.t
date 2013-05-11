@@ -8,7 +8,7 @@ use t::Util;
 
 subtest 'user' => sub {
 
-    my $datam = +{
+    my $datum_ref = +{
         name       => 'Mark Zuckerberg', # full name
         id         => 4, # id 1-3 were test users
         locale     => 'en_US', # string containing the ISO Language Code and ISO Country Code
@@ -24,7 +24,7 @@ subtest 'user' => sub {
         my $fb = Facebook::OpenGraph->new;
         my $user = $fb->fetch('zuck');
 
-        is_deeply $datam, $user, 'datam';
+        is_deeply $datum_ref, $user, 'datum';
 
     } receive_request {
 
@@ -45,7 +45,7 @@ subtest 'user' => sub {
             headers => [],
             status  => 200,
             message => 'OK',
-            content => $datam,
+            content => $datum_ref,
         };
 
     };
@@ -53,7 +53,7 @@ subtest 'user' => sub {
 
 subtest 'with fields' => sub {
                 
-    my $datam = +{
+    my $datum_ref = +{
         id      => 4, # id is always returned even if it's not specified in fields parameter
         picture => +{ # returns is_silhouette and url after October 2012 Breaking Changes
             data => +{
@@ -68,7 +68,7 @@ subtest 'with fields' => sub {
         my $fb   = Facebook::OpenGraph->new;
         my $user = $fb->fetch('zuck', +{fields => 'picture'});
 
-        is_deeply $datam, $user, 'datam';
+        is_deeply $datum_ref, $user, 'datum';
 
     } receive_request {
 
@@ -89,7 +89,7 @@ subtest 'with fields' => sub {
             headers => [],
             status  => 200,
             message => 'OK',
-            content => $datam,
+            content => $datum_ref,
         };
 
     };

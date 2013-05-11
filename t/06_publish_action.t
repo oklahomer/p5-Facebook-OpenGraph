@@ -6,7 +6,7 @@ use t::Util;
 
 subtest 'publish_action' => sub {
 
-    my $datam = +{
+    my $datum_ref = +{
         id => 1234567890,
     };
 
@@ -18,7 +18,7 @@ subtest 'publish_action' => sub {
         });
         my $response = $fb->publish_action('give', +{crap => 'http://samples.ogp.me/428404590566358'});
 
-        is_deeply $response, $datam, 'response';
+        is_deeply $response, $datum_ref, 'response';
 
     } receive_request {
 
@@ -44,7 +44,7 @@ subtest 'publish_action' => sub {
             headers => [],
             status  => 200,
             message => 'OK',
-            content => $datam,
+            content => $datum_ref,
         };
 
     };

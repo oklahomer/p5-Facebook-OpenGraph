@@ -13,7 +13,7 @@ subtest 'w/out token' => sub {
         my $fb = Facebook::OpenGraph->new;
         my $batch_queries = [
             +{method => 'GET', relative_url => 'zuck'},
-            +{method => 'GET', relative_url => 'Oklahomer'},
+            +{method => 'GET', relative_url => 'oklahomer.docs'},
         ];
         throws_ok sub { $fb->batch($batch_queries); }, qr/Top level access_token must be set/, 'exception';
 
@@ -32,12 +32,12 @@ subtest 'w/ valid token' => sub {
         gender     => 'male',
     };
     my $oklahomer = +{
-        link => 'http://www.facebook.com/Oklahomer',
+        link => 'http://www.facebook.com/oklahomer.docs',
         website => 'http://facebook-docs.oklahome.net/',
         release_date => '2011-02-24',
         name => 'Oklahomer',
         description => 'Facebook etc....',
-        username => 'Oklahomer',
+        username => 'oklahomer.docs',
         talking_about_count => 10390,
         cover => {
             source => 'http://sphotos-g.ak.fbcdn.net/hphotos-ak-snc6/s720x720/283711_500726406609334_431792850_n.jpg',
@@ -56,18 +56,18 @@ subtest 'w/ valid token' => sub {
         my $fb = Facebook::OpenGraph->new(+{
             access_token => '123456789|XfSeFWB-0EQ0qyipMdmNpJEAuPk',
         });
-        my $datam = $fb->batch([
+        my $data_ref = $fb->batch([
             +{method => 'GET', relative_url => 'zuck'},
-            +{method => 'GET', relative_url => 'Oklahomer'},
+            +{method => 'GET', relative_url => 'oklahomer.docs'},
         ]);
 
         is_deeply(
-            $datam,
+            $data_ref,
             [
                 $zuck,
                 $oklahomer,
             ],
-            'datam'
+            'data',
         );
 
     } receive_request {
@@ -82,7 +82,7 @@ subtest 'w/ valid token' => sub {
                 },
                 +{
                     method       => 'GET',
-                    relative_url => 'Oklahomer',
+                    relative_url => 'oklahomer.docs',
                 },
             ],
             'batch'
@@ -192,12 +192,12 @@ subtest 'check batch limit loop' => sub {
             'gender' => 'male'
         },
         +{
-            'link' => 'http://www.facebook.com/Oklahomer',
+            'link' => 'http://www.facebook.com/oklahomer.docs',
             'website' => 'http://facebook-docs.oklahome.net/',
             'release_date' => '2011-02-24',
             'name' => 'Oklahomer',
             'description' => 'Support making the world more open and connected',
-            'username' => 'Oklahomer',
+            'username' => 'oklahomer.docs',
             'talking_about_count' => 60,
             'cover' => +{
                 'source' => 'http://sphotos-g.ak.fbcdn.net/hphotos-ak-snc6/s720x720/283711_500726406609334_431792850_n.jpg',
@@ -311,16 +311,16 @@ subtest 'check batch limit loop' => sub {
 
     send_request {
 
-        my $datam = $fb->batch([
-            +{ method => 'GET', relative_url => 'zuck'         },
-            +{ method => 'GET', relative_url => 'Oklahomer'    },
-            +{ method => 'GET', relative_url => 'go.hagiwara'  },
-            +{ method => 'GET', relative_url => 'ChrisHughes'  },
-            +{ method => 'GET', relative_url => 'moskov'       },
-            +{ method => 'GET', relative_url => 'uco.bronchos' },
+        my $data_ref = $fb->batch([
+            +{ method => 'GET', relative_url => 'zuck'           },
+            +{ method => 'GET', relative_url => 'oklahomer.docs' },
+            +{ method => 'GET', relative_url => 'go.hagiwara'    },
+            +{ method => 'GET', relative_url => 'ChrisHughes'    },
+            +{ method => 'GET', relative_url => 'moskov'         },
+            +{ method => 'GET', relative_url => 'uco.bronchos'   },
         ]);
     
-        is_deeply($datam, \@profiles, 'batch');
+        is_deeply($data_ref, \@profiles, 'batch');
 
     } receive_request {
         
@@ -330,9 +330,9 @@ subtest 'check batch limit loop' => sub {
         my @profile_parts = @profiles[$start_cnt..$end_cnt];
         $start_cnt = $end_cnt + 1;
 
-        my @returning_datam;
+        my @returning_data;
         for my $profile (@profile_parts) {
-            push @returning_datam, +{
+            push @returning_data, +{
                 code => 200,
                 headers => [
                     +{
@@ -372,7 +372,7 @@ subtest 'check batch limit loop' => sub {
             status  => 200,
             headers => [],
             message => 'OK',
-            content => encode_json(\@returning_datam),
+            content => encode_json(\@returning_data),
         }
 
     }

@@ -41,12 +41,12 @@ subtest 'multi query w/out dependencies' => sub {
     send_request {
 
         my $fb = Facebook::OpenGraph->new;
-        my $datam = $fb->bulk_fql(+{
+        my $data_ref = $fb->bulk_fql(+{
             "all friends" => "SELECT uid2 FROM friend WHERE uid1=me()",
             "my name"     => "SELECT name FROM user WHERE uid=me()",
         })->{data};
 
-        is_deeply $datam, $val, 'content';
+        is_deeply $data_ref, $val, 'content';
 
     } receive_request {
 
