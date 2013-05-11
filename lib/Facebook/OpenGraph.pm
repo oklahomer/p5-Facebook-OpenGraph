@@ -7,10 +7,10 @@ use URI;
 use Furl::HTTP;
 use Data::Recursive::Encode;
 use JSON::XS qw(encode_json decode_json);
-use UNIVERSAL;
 use Carp qw(croak);
 use Digest::SHA qw(hmac_sha256);
 use MIME::Base64::URLSafe qw(urlsafe_b64decode);
+use Scalar::Util qw(blessed);
 
 our $VERSION = '0.01';
 
@@ -291,7 +291,7 @@ sub request {
     my ($self, $method, $uri, $param_ref, $headers) = @_;
 
     $method    = uc $method;
-    $uri       = $self->uri($uri) unless UNIVERSAL::isa($uri, 'URI');
+    $uri       = $self->uri($uri) unless blessed($uri) && $uri->isa('URI');
     $param_ref = $self->prep_param(+{
         $uri->query_form(+{}),
         %{$param_ref || +{}},
