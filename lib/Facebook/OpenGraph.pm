@@ -141,11 +141,11 @@ sub _get_token {
     };
 
     my $response = $self->request('GET', '/oauth/access_token', $param_ref);
-    # Get app_token from response content
+    # Get access_token from response content
     # content should be 'access_token=12345|QwerTy&expires=5183951' formatted
     my $res_content = $response->content;
     my $token_ref = +{URI->new('?'.$res_content)->query_form};
-    croak 'can\'t get app_token properly: '.$res_content
+    croak 'can\'t get access_token properly: '.$res_content
         unless $token_ref->{access_token};
 
     return $token_ref;
