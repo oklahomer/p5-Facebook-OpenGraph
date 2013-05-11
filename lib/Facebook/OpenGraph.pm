@@ -375,6 +375,13 @@ sub prep_param {
         $param_ref->{fields} = $self->prep_fields_recursive($field_ref);
     }
 
+    # Object API
+    # https://developers.facebook.com/docs/opengraph/using-object-api/
+    my $object = $param_ref->{object};
+    if ($object && ref $object eq 'HASH') {
+        $param_ref->{object} = encode_json($object);
+    }
+
     return $param_ref;
 }
 
