@@ -110,7 +110,7 @@ sub get_app_token {
 
     croak 'app_id and secret must be set' unless $self->app_id && $self->secret;
     my $token_ref = $self->_get_token(+{grant_type => 'client_credentials'});
-    return $token_ref->{access_token};
+    return $token_ref;
 }
 
 # Login for Server-side Apps: Step 6. Exchange the code for an Access Token
@@ -466,21 +466,21 @@ This is Facebook::OpenGraph version 0.01
   
   # fetching public information about given objects
   my $fb = Facebook::OpenGraph->new;
-  my $user = $fb->fetch('zuck'); #
+  my $user = $fb->fetch('zuck');
   my $page = $fb->fetch('oklahomer.docs');
   my $objs = $fb->bulk_fetch([qw/zuck oklahomer.docs/]);
   
   # get access_token for application
-  my $token = Facebook::OpenGraph->new(+{
-      app_id => $my_application_id,
-      secret => $my_application_secret,
+  my $token_ref = Facebook::OpenGraph->new(+{
+      app_id => 12345,
+      secret => 'FooBarBuzz',
   })->get_app_token;
   
   # user authorization
   my $fb = Facebook::OpenGraph->new(+{
-      app_id       => $my_application_id,
-      secret       => $my_application_secret,
-      namespace    => $my_application_namespace,
+      app_id       => 12345,
+      secret       => 'FooBarBuzz',
+      namespace    => 'my_app_namespace',
       redirect_uri => 'https://sample.com/auth_callback',
   });
   my $auth_url = $fb->auth_uri(+{
@@ -503,51 +503,85 @@ This is Facebook::OpenGraph version 0.01
 
 =head1 DESCRIPTION
 
-Facebook::OpenGraph is a Perl interface to handle Facebook's Graph API. This was inspired by L<Facebook::Graph>, but focused on simplicity and customizability because Facebook Platform modifies its API spec so frequently and we have to be able to handle it in shorter period of time.
+Facebook::OpenGraph is a Perl interface to handle Facebook's Graph API.
+This was inspired by L<Facebook::Graph>, but focused on simplicity and 
+customizability because Facebook Platform modifies its API spec so frequently 
+and we have to be able to handle it in shorter period of time.
+
+This module does B<NOT> provide ways to set and validate parameters for each 
+API endpoint like Facebook::Graph does with Any::Moose. Instead it provides 
+some basic methods for HTTP request and various methods to handle Graph API's 
+functionality such as Batch Request, FQL including multi-query, Field 
+Expansion, ETag, wall posting w/ photo or video, creating Test Users, checking 
+and updating Open Graph Object or web page w/ OGP, publishing Open Graph 
+Action, deleting Open Graph Object and etc...
+
+You can specify endpoints and request parameters by yourself so it should be 
+easier to test latest API spec.
 
 =head1 METHODS
 
 =head2 Class Methods
 
-=head3 C<< Facebook::OpenGraph->new( $args ) :Facebook::OpenGraph >>
+=head3 C<< Facebook::OpenGraph->new($args :HashRef) :Facebook::OpenGraph >>
 
 Creates and returns a new Facebook::OpenGraph object.
 
 I<$args> can contain...
 
-=over
+=over 4
 
-=item app_id :Int
+=item * app_id :Int
 
-Facebook application ID.
+Facebook application ID. app_id and secret are required to get application 
+access token. Your app_id should be obtained from 
+L<https://developers.facebook.com/apps/>
 
-=item secret :Str
+=item * secret :Str
 
-Facebook application secret.
+Facebook application secret. Should be obtained from 
+L<https://developers.facebook.com/apps/>
 
-=item ua :Object
+=item * ua :Object
 
 L<Furl::HTTP> object. Default is equivalent to Furl::HTTP->new;
 
-=item namespace :Str
+=item * namespace :Str
 
-Facebook application namespace. This is used when you publish Open Graph Action.
+Facebook application namespace. This is used when you publish Open Graph Action 
+via C<publish_action()>
 
-=item access_token :Str
+=item * access_token :Str
 
 Access token for user, application or Facebook Page.
 
-=item redirect_uri :Str
+=item * redirect_uri :Str
 
-The URL to be used for authorization. Detail should be found at L<https://developers.facebook.com/docs/reference/dialogs/oauth/>.
+The URL to be used for authorization. Detail should be found at 
+L<https://developers.facebook.com/docs/reference/dialogs/oauth/>.
 
-=item batch_limit :Int = 50
+=item * batch_limit :Int = 50
 
-The maximum # of queries that can be set w/in a single batch request. If the # of given queries exceeds this, then queries are divided into multiple batch requests and responses are combined so it seems just like a single request. Default value is 50 as API documentation says.
+The maximum # of queries that can be set w/in a single batch request. If the # 
+of given queries exceeds this, then queries are divided into multiple batch 
+requests and responses are combined so it seems just like a single request. 
+Default value is 50 as API documentation says. Official documentation is 
+located at L<https://developers.facebook.com/docs/reference/api/batch/>
 
-=item is_beta :Bool = 0
+=item * is_beta :Bool = 0
 
-Weather to use beta tier.
+Weather to use beta tier. See the official documentation for details. 
+L<https://developers.facebook.com/support/beta-tier/>.
+
+  my $fb = Facebook::OpenGraph->new(+{
+      app_id       => 123456,
+      secret       => 'FooBarBuzz',
+      ua           => Furl::HTTP->new(agent => 'MyAppUa/1.0', timeout => 3),
+      namespace    => 'fb-app-namespace', # for Open Graph Action
+      access_token => '', # will be appended to request header in request()
+      redirect_uri => 'https://sample.com/auth_callback', # for OAuth
+      batch_limit  => 50,
+  })
 
 =back
 
@@ -575,11 +609,14 @@ Accessor method that returns access token.
 
 =head3 C<< $fb->redirect_uri() :Str >>
 
-Accessor method that returns uri that is used for user authorization.
+Accessor method that returns URL that is used for user authorization.
 
 =head3 C<< $fb->batch_limit() :Int >>
 
-Accessor method that returns the maximum # of queries that can be set w/in a single batch request. If the # of given queries exceeds this, then queries are divided into multiple batch requests and responses are combined so it seems just like a single request. Default value is 50 as API documentation says.
+Accessor method that returns the maximum # of queries that can be set w/in a 
+single batch request. If the # of given queries exceeds this, then queries are 
+divided into multiple batch requests and responses are combined so it just 
+seems like a single batch request. Default value is 50 as API documentation says.
 
 =head3 C<< $fb->is_beta() :Bool >>
 
@@ -587,11 +624,17 @@ Accessor method that returns whether to use Beta tier or not.
 
 =head3 C<< $fb->uri($path :Str) :Object >>
 
-Returns URI object w/ the specified path. If is_beta returns true, the base url is https://graph.beta.facebook.com/ . Otherwise its base url is https://graph.facebook.com/ . C<request()> automatically determines if it should use C<uri()> or C<video_uri()> based on endpoint and parameters so you won't use C<uri()> or C<video_uri()> directly as long as you are using requesting methods that are provided in this module.
+Returns URI object w/ the specified path. If is_beta returns true, the base url 
+is https://graph.beta.facebook.com/ . Otherwise its base url is 
+https://graph.facebook.com/ . C<request()> automatically determines if it 
+should use C<uri()> or C<video_uri()> based on target path and parameters so 
+you won't use C<uri()> or C<video_uri()> directly as long as you are using 
+requesting methods that are provided in this module.
 
 =head3 C<< $fb->video_uri($path :Str) :Object >>
 
-Returns URI object w/ the specified path that should only be used when posting a video.
+Returns URI object w/ the specified path that should only be used when posting 
+a video.
 
 =head3 C<< $fb->parse_signed_request($signed_request_str :Str) :HashRef >>
 
@@ -602,7 +645,9 @@ It parses signed_request that Facebook Platform gives to your callback endpoint.
 
 =head3 C<< $fb->auth_uri($args :HashRef) :Str >>
 
-Returns URL for Facebook OAuth dialog. You can redirect your user to this returning URL for authorization purpose.
+Returns URL for Facebook OAuth dialog. You can redirect your user to this 
+returning URL for authorization purpose. See 
+L<https://developers.facebook.com/docs/reference/dialogs/oauth/> for details.
 
   my $auth_url = $fb->auth_uri(+{
       display => 'page', # Dialog's display type. Default value is 'page.'
@@ -612,15 +657,36 @@ Returns URL for Facebook OAuth dialog. You can redirect your user to this return
 
 =head3 C<< $fb->set_access_token($access_token :Str) >>
 
-Set $access_token as the access token to use on C<request()>. C<access_token()> returns this value.
+Set $access_token as the access token to be used on C<request()>. C<access_token()> 
+returns this value.
 
 =head3 C<< $fb->get_app_token() :HashRef >>
 
-Obtain an access token for application. Give the returning value to C<set_access_token()> and you can make request on behalf of your application.
+Obtain an access token for application. Give the returning value to 
+C<set_access_token()> and you can make request on behalf of your application. 
+This access token never expires unless you reset application secret key on App 
+Dashboard so you might want to store this value w/in your process like below...
+
+  package MyApp::OpenGraph;
+  use parent 'Facebook::OpenGraph';
+  
+  sub get_app_token {
+      my $self = shift;
+      return $self->{__app_access_token__}
+          ||= $self->SUPER::get_app_token->{access_token};
+  }
+
+Or you might want to use Cache::Memory::Simple or something similar to it and 
+refetch token at an interval of your choice. Maybe you want to store token on 
+DB and want this method to return the stored value. So you should override it 
+as you like.
 
 =head3 C<< $fb->get_user_token_by_code($code :Str) :HashRef >>
 
-Obtain an access token for user based on C<$code>. C<$code> should be given on your callback endpoint which is specified on C<$redirect_uri>. Give the returning access token to C<set_access_token()> and you can act on behalf of the user.
+Obtain an access token for user based on C<$code>. C<$code> should be obtained 
+on your callback endpoint which is specified on C<eredirect_uri>. Give the 
+returning access token to C<set_access_token()> and you can act on behalf of 
+the user.
 
   # On OAuth callback page which you specified on $fb->redirect_uri.
   my $req          = Plack::Request->new($env);
@@ -661,7 +727,8 @@ Alias to C<post()> for those who got used to L<Facebook::Graph>
 
 =head3 C<< $fb->fetch_with_etag($path :Str, $params :HashRef, $etag_value :Str) >>
 
-Alias to C<request()> that sends C<GET> request w/ given ETag value. Returns undef if requesting data is not modified. Otherwise it returns modified data.
+Alias to C<request()> that sends C<GET> request w/ given ETag value. Returns 
+undef if requesting data is not modified. Otherwise it returns modified data.
 
   my $user = $fb->fetch_with_etag('/zuck', +{fields => 'email'}, $etag);
 
@@ -693,7 +760,8 @@ Request batch request and returns an array reference.
 
 =head3 C<< $fb->batch_fast($requests_ref :ArrayRef) :ArrayRef >>
 
-Request batch request and returns results as array reference, but it doesn't create L<Facebook::OpenGraph::Response> to handle each response.
+Request batch request and returns results as array reference, but it doesn't 
+create L<Facebook::OpenGraph::Response> to handle each response.
 
   my $data = $fb->batch_fast([
       +{method => 'GET', relative_url => 'zuck'},
@@ -716,7 +784,8 @@ Request batch request and returns results as array reference, but it doesn't cre
 
 =head3 C<< $fb->fql($fql_query :Str) :HashRef >>
 
-Alias to C<request()> that optimizes query parameter for FQL query and sends C<GET> request.
+Alias to C<request()> that optimizes query parameter for FQL query and sends 
+C<GET> request.
 
   my $res = $fb->fql('SELECT display_name FROM application WHERE app_id = 12345');
   #{
@@ -753,29 +822,74 @@ Alias to C<fql()> to request multiple FQL query at once.
 
 =head3 C<< $fb->delete($path :Str, $param_ref :HashRef) :HashRef >>
 
-Alias to C<request()> that sends DELETE request to delete object on Facebook's social graph. It sends POST request w/ method=delete query parameter when DELETE request fails. I know it's weird, but sometimes DELETE fails and POST w/ method=delete works.
+Alias to C<request()> that sends DELETE request to delete object on Facebook's 
+social graph. It sends POST request w/ method=delete query parameter when 
+DELETE request fails. I know it's weird, but sometimes DELETE fails and POST w/ 
+method=delete works.
 
   $fb->delete($object_id);
 
 =head3 C<< $fb->request($request_method :Str, $path :Str, $param_ref :HashRef, $headers_ref :ArrayRef) :Facebook::OpenGraph::Response >>
 
-Sends request to Facebook Platform and returns L<Facebook::Graph::Response> object.
+Sends request to Facebook Platform and returns L<Facebook::Graph::Response> 
+object.
 
 =head3 C<< $fb->create_response($http_status_code :Int, $http_status_message :Str, $headers_ref :ArrayRef, $response_content :Str) :Facebook::OpenGraph::Response >>
 
-Creates and returns L<Facebook::OpenGraph::Response>. If you wish to use customized response class, then override this method to return MyApp::Better::Response.
+Creates and returns L<Facebook::OpenGraph::Response>. If you wish to use 
+customized response class, then override this method to return 
+MyApp::Better::Response.
 
 =head3 C<< $fb->prep_param($param_ref :HashRef) :HashRef >>
 
-Handles sending parameters and format them in the way Graph API spec states. This method is called in C<request()> so you don't usually use this method directly.
+Handles sending parameters and format them in the way Graph API spec states. 
+This method is called in C<request()> so you don't usually use this method 
+directly.
 
 =head3 C<< $fb->prep_fields_recursive($val :Any) :Str >>
 
-Handles fields parameter and format it in the way Graph API spec states. This method is called in C<prep_param> which is called in C<request()> so you don't usually use this method directly.
+Handles fields parameter and format it in the way Graph API spec states. 
+The main purpose of this method is to deal w/ Field Expansion
+(L<https://developers.facebook.com/docs/reference/api/field_expansion/>). 
+This method is called in C<prep_param> which is called in C<request()> so you 
+don't usually use this method directly.
+
+  # simple fields
+  $fb->prep_fields_recursive([qw/name email albums/]); # name,email,albums
+
+  # use field expansion
+  $fb->prep_fields_recursive([
+      'name',
+      'email',
+      +{
+          albums => +{
+              fields => [
+                  'name',
+                  +{
+                      photos => +{
+                          fields => [
+                              'name',
+                              'picture',
+                              +{
+                                  tags => +{
+                                      limit => 2,
+                                  },
+                              }
+                          ],
+                          limit => 3,
+                      }
+                  }
+              ],
+              limit => 5,
+          }
+      }
+  ]);
+  # 'name,email,albums.fields(name,photos.fields(name,picture,tags.limit(2)).limit(3)).limit(5)'
 
 =head3 C<< $fb->publish_action($action_type :Str, $param_ref :HashRef) :HashRef >>
 
-Alias to C<request()> that optimizes body content and endpoint to sends C<POST> request to publish Open Graph Action.
+Alias to C<request()> that optimizes body content and endpoint to sends C<POST> 
+request to publish Open Graph Action.
 
   my $res = $fb->publish_action('give', +{crap => 'https://sample.com/poop/'});
   #{id => 123456}
@@ -798,16 +912,16 @@ Alias to C<request()> that optimizes body content and endpoint to sends C<POST> 
   #    +{
   #        id           => 123456789,
   #        access_token => '5678uiop',
-  #        login_url    => 'https://www.facebook.com/platform/test_account_login?user_id=123456789&n=asdfghh',
-  #        email        => 'saffasdffad@tfbnw.net',
-  #        password     => 67890,
+  #        login_url    => 'https://www.facebook.com/........',
+  #        email        => '.....@tfbnw.net',
+  #        password     => '.......',
   #    },
   #    +{
   #        id           => 1234567890,
   #        access_token => '5678uiopasadfasdfa',
-  #        login_url    => 'https://www.facebook.com/platform/test_account_login?user_id=1234567890&n=asdfghdasdfash',
-  #        email        => 'asdfghdasdfash@tfbnw.net',
-  #        password     => 12345,
+  #        login_url    => 'https://www.facebook.com/........',
+  #        email        => '.....@tfbnw.net',
+  #        password     => '.......',
   #    },
   #];
 
@@ -815,7 +929,8 @@ Alias to C<request()> that optimizes to create test users for your application.
 
 =head3 C<< $fb->check_object($target :Str) :HashRef >>
 
-Alias to C<request()> that sends C<POST> request to Facebook Debugger to check/update object.
+Alias to C<request()> that sends C<POST> request to Facebook Debugger to 
+check/update object.
 
   $fb->check_object('https://sample.com/object/');
   $fb->check_object($object_id);
@@ -826,13 +941,13 @@ Oklahomer E<lt>hagiwara dot go at gmail dot comE<gt>
 
 =head1 SUPPORT
 
-=over
+=over 4
 
-=item Repository
+=item * Repository
 
 L<https://github.com/oklahomer/p5-Facebook-OpenGraph/>
 
-=item Bug Reports
+=item * Bug Reports
 
 L<https://github.com/oklahomer/p5-Facebook-OpenGraph/issues>
 

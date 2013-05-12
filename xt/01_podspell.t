@@ -19,3 +19,7 @@ ETag
 customizability
 uri
 JSON
+API's
+refetch
+multi
+OGP

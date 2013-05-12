@@ -13,7 +13,7 @@ subtest 'get' => sub {
             app_id => 123456789,
             secret => 'secret',
         });
-        my $token = $fb->get_app_token;
+        my $token = $fb->get_app_token->{access_token};
         is $token, '123456789|SSSeFWB-0EQ0qyipMdmNpJJJJjk', 'token';
 
     } receive_request {
@@ -56,7 +56,7 @@ subtest 'w/o secret key' => sub {
 
     throws_ok(
         sub {
-            my $token = $fb->get_app_token;
+            my $token = $fb->get_app_token->{access_token};
         },
         qr/app_id and secret must be set /,
         'secret key',
@@ -72,7 +72,7 @@ subtest 'w/o secret key' => sub {
 
     throws_ok(
         sub {
-            my $token = $fb->get_app_token;
+            my $token = $fb->get_app_token->{access_token};
         },
         qr/app_id and secret must be set /,
         'secret key',
