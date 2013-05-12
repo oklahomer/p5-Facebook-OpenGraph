@@ -7,8 +7,6 @@ our @EXPORT = qw(
 
 use JSON 2 qw(encode_json);
 use Furl::HTTP;
-use Furl::Response;
-use Plack::Request;
 
 sub send_request (&@) {
     my($code, $mock) = @_;
