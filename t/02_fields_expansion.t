@@ -5,7 +5,8 @@ use Facebook::OpenGraph;
 use URI;
 use t::Util;
 use JSON 2 qw(encode_json);
-use YAML qw(LoadFile);
+eval "use YAML qw(LoadFile)";
+plan skip_all => "YAML is not installed." if $@;
 
 subtest 'field expansion' => sub {
 
@@ -89,15 +90,32 @@ subtest 'field expansion' => sub {
     
     } receive_request {
 
-        my %args = @_;
-        
+        my %args   = @_;
+        my %query  = URI->new(delete $args{url})->query_form;
+        my $fields = $query{fields};
+
+        my $user_field_match = $fields =~ s/(^name,email,albums)//;
+        is $user_field_match, 1, 'user fields';
+
+        my $albums_limit_match = $fields =~ s/(^\.limit\(5\)|\.limit\(5\)$)//;
+        is $albums_limit_match, 1, 'albums limit';
+        my $albums_fields_match = $fields =~ s/^\.fields\(name,photos(.*)\)$/$1/;
+        is $albums_fields_match, 1, 'albums fields';
+
+        my $photos_limit_match = $fields =~ s/(^\.limit\(3\)|\.limit\(3\)$)//;
+        is $photos_limit_match, 1, 'photos limit';
+        my $photos_fields_match = $fields =~ s/^\.fields\(name,picture,tags(.*)\)/$1/;
+        is $photos_fields_match, 1, 'photos fields';
+
+        my $tags_limit_match  = $fields =~ m/\.limit\(2\)/;
+        is $tags_limit_match, 1, 'tags limit';
+
         is_deeply(
             \%args,
             +{
                 headers => ['Authorization' => 'OAuth qwerty'],
                 content => '',
                 method  => 'GET',
-                url     => 'https://graph.facebook.com/me?fields=name%2Cemail%2Calbums.fields(name%2Cphotos.fields(name%2Cpicture%2Ctags.limit(2)).limit(3)).limit(5)',
             },
             'args'
         );
@@ -116,9 +134,9 @@ subtest 'w/ other params' => sub {
 
     send_request {
 
-        my $fb = Facebook::OpenGraph->new;
+        my $fb     = Facebook::OpenGraph->new;
         my $fields = LoadFile('t/resource/fields.yaml');
-        my $user = $fb->fetch('/me', +{fields => $fields, locale => 'ja_JP'});
+        my $user   = $fb->fetch('/me', +{fields => $fields, locale => 'ja_JP'});
 
     } receive_request {
 

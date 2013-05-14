@@ -1,4 +1,7 @@
 Revision history for Perl extension Facebook::OpenGraph
 
+0.02    Tue May 13 21:00:00 2013
+        - Fix test
+
 0.01    Mon Nov 26 20:36:44 2012
         - original version
