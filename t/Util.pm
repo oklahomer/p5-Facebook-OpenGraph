@@ -1,5 +1,5 @@
 package t::Util;
-use parent qw/Exporter/;
+use base qw/Exporter/;
 
 our @EXPORT = qw(
     send_request receive_request
