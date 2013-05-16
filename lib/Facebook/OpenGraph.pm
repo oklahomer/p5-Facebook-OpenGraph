@@ -21,7 +21,7 @@ sub new {
     return bless +{
         app_id       => $args->{app_id},
         secret       => $args->{secret},
-        ua           => $args->{ua} || Furl::HTTP->new,
+        ua           => $args->{ua} || Furl::HTTP->new(capture_request => 1),
         namespace    => $args->{namespace},
         access_token => $args->{access_token},
         redirect_uri => $args->{redirect_uri},
@@ -331,18 +331,21 @@ sub request {
         $content = '';
     }
 
-    my ($res_minor_version, $res_status, $res_msg, $res_headers, $res_content)
-        = $self->ua->request(
-            method  => $method,
-            url     => $uri,
-            headers => $headers,
-            content => $content,
-        );
-
-    my $response = $self->create_response(
-        $res_status, $res_msg, $res_headers, $res_content
+    my ($res_minor_version, @res_elms) = $self->ua->request(
+        method  => $method,
+        url     => $uri,
+        headers => $headers,
+        content => $content,
     );
-    croak $response->error_string unless $response->is_success;
+
+    my $response = $self->create_response(@res_elms);
+    # Use later version of Furl::HTTP to utilize req_headers and req_content.
+    # This Should be helpful for debugging
+    croak(
+        $response->error_string,
+        $response->req_headers,
+        $response->req_content,
+    ) unless $response->is_success;
 
     return $response;
 }
@@ -350,7 +353,9 @@ sub request {
 sub create_response {
     my $self = shift;
     return Facebook::OpenGraph::Response->new(+{
-        map {$_ => shift} qw/code message headers content/
+        map {
+            $_ => shift
+        } qw/code message headers content req_headers req_content/
     });
 }
 

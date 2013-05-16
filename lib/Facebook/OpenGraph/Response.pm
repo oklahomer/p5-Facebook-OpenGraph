@@ -9,16 +9,18 @@ sub new {
     my $args  = shift || +{};
 
     return bless +{
-        code    => $args->{code},
-        message => $args->{message},
-        content => $args->{content},
+        map {
+            $_ => $args->{$_},
+        } qw/code message content req_headers req_content/
     }, $class;
 }
 
 # accessors
-sub code    { shift->{code}    }
-sub message { shift->{message} }
-sub content { shift->{content} }
+sub code        { shift->{code}    }
+sub message     { shift->{message} }
+sub content     { shift->{content} }
+sub req_headers { shift->{req_headers} || '' }
+sub req_content { shift->{req_content} || '' }
 
 sub is_success {
     my $self = shift;
@@ -31,17 +33,32 @@ sub is_success {
 sub error_string {
     my $self = shift;
     my $error = eval { $self->as_hashref->{error}; };
-    # sometimes error_subcode is not given
-    return $@ ? $self->message
-              : sprintf('%s:%s %s:%s', $error->{code}, $error->{error_subcode} || '-', $error->{type}, $error->{message});
+
+    my $err_str = '';
+    if ($@ || !$error) {
+        $err_str = $self->message;
+    }
+    else {
+        # sometimes error_subcode is not given
+        $err_str = sprintf(
+            '%s:%s %s:%s',
+            $error->{code},
+            $error->{error_subcode} || '-',
+            $error->{type},
+            $error->{message},
+        );
+    }
+
+    return $err_str;
 }
 
 sub as_json {
     my $self = shift;
     if ((my $bool = $self->content) =~ m/^(true|false)$/) {
-        # Sometimes they return plain text
-        # saying 'true' or 'false' to indicate result.
-        # So make it JSON formatted for our convinience.
+        # Sometimes they return plain text saying 'true' or 'false' to indicate
+        # result. So make it JSON formatted for our convinience. The key is
+        # named "success" so its format matches w/ some other endpoints that
+        # return {"success": "(true|false)"}.
         $self->{content} = sprintf('{"success" : "%s"}', $bool);
     };
     return $self->content; # content is JSON formatted
@@ -69,7 +86,14 @@ Facebook::OpenGraph::Response - Response object for Facebook::OpenGraph.
 
 =head1 SYNOPSIS
 
-  my $res = Facebook::OpenGraph::Response->new($http_status_code, $http_status_message, $response_headers, $response_content);
+  my $res = Facebook::OpenGraph::Response->new(+{
+      code        => $http_status_code,
+      message     => $http_status_message,
+      headers     => $response_headers,
+      content     => $response_content,
+      req_headers => $req_headers,
+      req_content => $req_content,
+  });
 
 =head1 DESCRIPTION
 
@@ -107,7 +131,11 @@ Returns error string.
 
 =head3 C<< $res->as_json() :Str >>
 
-Returns response content as JSON string. Most of the time the response content itself is JSON formatted so it basically returns response content without doing anything. When Graph API returns plain text just saying 'true' or 'false,' it turns the content into JSON format like '{"success" : "(true|false)"}' so you can handle it in the same way as other case.
+Returns response content as JSON string. Most of the time the response content 
+itself is JSON formatted so it basically returns response content without doing 
+anything. When Graph API returns plain text just saying 'true' or 'false,' it 
+turns the content into JSON format like '{"success" : "(true|false)"}' so you 
+can handle it in the same way as other cases.
 
 =head3 C<< $res->as_hashref() :HashRef >>
 
@@ -115,4 +143,5 @@ Returns response content in hash reference.
 
 =head3 C<< $res->is_modified() :Bool >>
 
-Returns if target object is modified. This method is called in $fb->fetch_with_etag().
+Returns if target object is modified. This method is called in 
+$fb->fetch_with_etag().
