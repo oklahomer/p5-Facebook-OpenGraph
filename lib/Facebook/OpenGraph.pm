@@ -12,7 +12,7 @@ use Digest::SHA qw(hmac_sha256);
 use MIME::Base64::URLSafe qw(urlsafe_b64decode);
 use Scalar::Util qw(blessed);
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 sub new {
     my $class = shift;
@@ -471,7 +471,7 @@ Facebook::OpenGraph - Simple way to handle Facebook's Graph API.
 
 =head1 VERSION
 
-This is Facebook::OpenGraph version 0.02
+This is Facebook::OpenGraph version 0.03
 
 =head1 SYNOPSIS
     
