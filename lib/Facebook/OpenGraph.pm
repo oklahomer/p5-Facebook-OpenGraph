@@ -367,6 +367,11 @@ sub prep_param {
 
     $param_ref = Data::Recursive::Encode->encode_utf8($param_ref || +{});
 
+    # /?ids=4,http://facebook-docs.oklahome.net
+    if (my $ids = $param_ref->{ids}) {
+        $param_ref->{ids} = ref $ids ? join ',', @$ids : $ids;
+    }
+
     # mostly for /APP_ID/accounts/test-users
     if (my $perms = $param_ref->{permissions}) {
         $param_ref->{permissions} = ref $perms ? join ',', @$perms : $perms;
