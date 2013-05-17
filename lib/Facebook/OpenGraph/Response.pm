@@ -2,25 +2,30 @@ package Facebook::OpenGraph::Response;
 use strict;
 use warnings;
 use Carp qw(croak);
-use JSON 2 qw(decode_json);
+use JSON 2 ();
 
 sub new {
     my $class = shift;
     my $args  = shift || +{};
 
     return bless +{
-        map {
-            $_ => $args->{$_},
-        } qw/code message content req_headers req_content/
+        json        => $args->{json} || JSON->new->utf8,
+        headers     => $args->{headers},
+        code        => $args->{code},
+        message     => $args->{message},
+        content     => $args->{content},
+        req_headers => $args->{req_headers} || '',
+        req_content => $args->{req_content} || '',
     }, $class;
 }
 
 # accessors
-sub code        { shift->{code}    }
-sub message     { shift->{message} }
-sub content     { shift->{content} }
-sub req_headers { shift->{req_headers} || '' }
-sub req_content { shift->{req_content} || '' }
+sub code        { shift->{code}        }
+sub message     { shift->{message}     }
+sub content     { shift->{content}     }
+sub req_headers { shift->{req_headers} }
+sub req_content { shift->{req_content} }
+sub json        { shift->{json}        }
 
 sub is_success {
     my $self = shift;
@@ -65,8 +70,9 @@ sub as_json {
 }
 
 sub as_hashref {
+    my $self = shift;
     # just in case content is not properly formatted
-    my $hash_ref = eval { decode_json(shift->as_json); };
+    my $hash_ref = eval { $self->json->decode($self->as_json); };
     croak $@ if $@;
     return $hash_ref;
 }
@@ -103,33 +109,75 @@ This handles response object for Facebook::OpenGraph.
 
 =head2 Class Methods
 
-=head3 C<< Facebook::OpenGraph::Response->new($status_code :Int, $status_mess :Str, $headers :ArrayRef, $content :Str) :Object >>
+=head3 C<< Facebook::OpenGraph::Response->new(\%args) >>
 
 Creates and returns a new Facebook::OpenGraph::Response object.
 
+I<%args> can contain...
+
+=over 4
+
+=item * code
+
+HTTP status code
+
+=item * message
+
+HTTP status message
+
+=item * headers
+
+Response headers
+
+=item * content
+
+Response body
+
+=item * req_headers
+
+Stringified request headers
+
+=item * req_content
+
+Request content
+
+=back
+
 =head2 Instance Methods
 
-=head3 C<< $res->code() :Int >>
+=head3 C<< $res->code >>
 
 Returns HTTP status code
 
-=head3 C<< $res->message() :Str >>
+=head3 C<< $res->message >>
 
 Returns HTTP status message
 
-=head3 C<< $res->content() :Str >>
+=head3 C<< $res->content >>
 
 Returns response body
 
-=head3 C<< $res->is_success() :Bool >>
+=head3 C<< $res->req_headers >>
+
+Returns request header. This is especially useful for debugging. You must install the later 
+version of Furl to enable this or otherwise empty string will be returned.
+Also you have to specify Furl::HTTP->new(capture_request => 1) option.
+
+=head3 C<< $res->req_content >>
+
+Returns request body. This is especially useful for debugging. You must install the later 
+version of Furl to enable this or otherwise empty string will be returned.
+Also you have to specify Furl::HTTP->new(capture_request => 1) option.
+
+=head3 C<< $res->is_success >>
 
 Returns if status is 2XX or 304. 304 is added to handle $fb->fetch_with_etag();
 
-=head3 C<< $res->error_string() :Str >>
+=head3 C<< $res->error_string >>
 
 Returns error string.
 
-=head3 C<< $res->as_json() :Str >>
+=head3 C<< $res->as_json >>
 
 Returns response content as JSON string. Most of the time the response content 
 itself is JSON formatted so it basically returns response content without doing 
@@ -137,11 +185,11 @@ anything. When Graph API returns plain text just saying 'true' or 'false,' it
 turns the content into JSON format like '{"success" : "(true|false)"}' so you 
 can handle it in the same way as other cases.
 
-=head3 C<< $res->as_hashref() :HashRef >>
+=head3 C<< $res->as_hashref >>
 
 Returns response content in hash reference.
 
-=head3 C<< $res->is_modified() :Bool >>
+=head3 C<< $res->is_modified >>
 
 Returns if target object is modified. This method is called in 
 $fb->fetch_with_etag().

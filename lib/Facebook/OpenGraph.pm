@@ -6,7 +6,7 @@ use HTTP::Request::Common;
 use URI;
 use Furl::HTTP;
 use Data::Recursive::Encode;
-use JSON 2 qw(encode_json decode_json);
+use JSON 2 ();
 use Carp qw(croak);
 use Digest::SHA qw(hmac_sha256);
 use MIME::Base64::URLSafe qw(urlsafe_b64decode);
@@ -27,6 +27,7 @@ sub new {
         redirect_uri => $args->{redirect_uri},
         batch_limit  => $args->{batch_limit} || 50,
         is_beta      => $args->{is_beta} || 0,
+        json         => $args->{json} || JSON->new->utf8,
     }, $class;
 }
 
@@ -39,6 +40,7 @@ sub access_token { shift->{access_token} }
 sub redirect_uri { shift->{redirect_uri} }
 sub batch_limit  { shift->{batch_limit}  }
 sub is_beta      { shift->{is_beta}      }
+sub json         { shift->{json}         }
 
 sub uri {
     my ($self, $path) = @_;
@@ -63,7 +65,7 @@ sub parse_signed_request {
 
     my ($enc_sig, $payload) = split(/\./, $signed_request);
     my $sig = urlsafe_b64decode($enc_sig);
-    my $val = decode_json(urlsafe_b64decode($payload));
+    my $val = $self->json->decode(urlsafe_b64decode($payload));
 
     croak 'algorithm must be HMAC-SHA256'
         unless uc($val->{algorithm}) eq 'HMAC-SHA256';
@@ -180,7 +182,7 @@ sub bulk_fetch {
     my ($self, $paths_ref) = @_;
 
     my @queries = map {
-        +{method => 'GET', relative_url => $_}
+        +{ method => 'GET', relative_url => $_ }
     } @$paths_ref;
 
     return $self->batch(\@queries);
@@ -194,11 +196,12 @@ sub batch {
 
     my $responses_ref = $self->batch_fast($batch, @_);
 
-    # Devide response content and create response objects that correspond to each request
+    # Devide response content and create response objects that correspond to
+    # each request
     my @data = ();
     for my $r (@$responses_ref) {
         for my $res_ref (@$r) {
-            my @headers  = map {
+            my @headers = map {
                 $_->{name} => $_->{value}
             } @{$res_ref->{headers}};
             my $response = $self->create_response(
@@ -220,9 +223,9 @@ sub batch_fast {
     my $self  = shift;
     my $batch = shift;
 
-    # Other than HTTP header, you need to set access_token as top level parameter.
-    # You can specify individual token for each request
-    # so you can act as several other users and/or pages.
+    # Other than HTTP header, you need to set access_token as top level 
+    # parameter. You can specify individual token for each request so you can
+    # act as several other users and/or pages.
     croak 'Top level access_token must be set' unless $self->access_token;
 
     # "We currently limit the number of requests which can be in a batch to 50"
@@ -240,7 +243,7 @@ sub batch_fast {
             '',
             +{
                 access_token => $self->access_token,
-                batch        => encode_json(\@queries),
+                batch        => $self->json->encode(\@queries),
             },
             @_,
         );
@@ -262,8 +265,7 @@ sub fql {
 sub bulk_fql {
     my $self  = shift;
     my $batch = shift;
-
-    return $self->fql(encode_json($batch), @_);
+    return $self->fql($self->json->encode($batch), @_);
 }
 
 # Graph API: Deleting
@@ -353,6 +355,7 @@ sub request {
 sub create_response {
     my $self = shift;
     return Facebook::OpenGraph::Response->new(+{
+        json => $self->json,
         map {
             $_ => shift
         } qw/code message headers content req_headers req_content/
@@ -384,7 +387,7 @@ sub prep_param {
     # https://developers.facebook.com/docs/opengraph/using-object-api/
     my $object = $param_ref->{object};
     if ($object && ref $object eq 'HASH') {
-        $param_ref->{object} = encode_json($object);
+        $param_ref->{object} = $self->json->encode($object);
     }
 
     return $param_ref;
@@ -528,44 +531,44 @@ easier to test latest API spec.
 
 =head2 Class Methods
 
-=head3 C<< Facebook::OpenGraph->new($args :HashRef) :Facebook::OpenGraph >>
+=head3 C<< Facebook::OpenGraph->new(\%args) >>
 
 Creates and returns a new Facebook::OpenGraph object.
 
-I<$args> can contain...
+I<%args> can contain...
 
 =over 4
 
-=item * app_id :Int
+=item * app_id
 
 Facebook application ID. app_id and secret are required to get application 
 access token. Your app_id should be obtained from 
 L<https://developers.facebook.com/apps/>
 
-=item * secret :Str
+=item * secret
 
 Facebook application secret. Should be obtained from 
 L<https://developers.facebook.com/apps/>
 
-=item * ua :Object
+=item * ua
 
 L<Furl::HTTP> object. Default is equivalent to Furl::HTTP->new;
 
-=item * namespace :Str
+=item * namespace
 
 Facebook application namespace. This is used when you publish Open Graph Action 
 via C<publish_action()>
 
-=item * access_token :Str
+=item * access_token
 
 Access token for user, application or Facebook Page.
 
-=item * redirect_uri :Str
+=item * redirect_uri
 
 The URL to be used for authorization. Detail should be found at 
 L<https://developers.facebook.com/docs/reference/dialogs/oauth/>.
 
-=item * batch_limit :Int = 50
+=item * batch_limit
 
 The maximum # of queries that can be set w/in a single batch request. If the # 
 of given queries exceeds this, then queries are divided into multiple batch 
@@ -573,7 +576,7 @@ requests and responses are combined so it seems just like a single request.
 Default value is 50 as API documentation says. Official documentation is 
 located at L<https://developers.facebook.com/docs/reference/api/batch/>
 
-=item * is_beta :Bool = 0
+=item * is_beta
 
 Weather to use beta tier. See the official documentation for details. 
 L<https://developers.facebook.com/support/beta-tier/>.
@@ -581,7 +584,7 @@ L<https://developers.facebook.com/support/beta-tier/>.
   my $fb = Facebook::OpenGraph->new(+{
       app_id       => 123456,
       secret       => 'FooBarBuzz',
-      ua           => Furl::HTTP->new(agent => 'MyAppUa/1.0', timeout => 3),
+      ua           => Furl::HTTP->new(capture_request => 1),
       namespace    => 'fb-app-namespace', # for Open Graph Action
       access_token => '', # will be appended to request header in request()
       redirect_uri => 'https://sample.com/auth_callback', # for OAuth
@@ -592,42 +595,42 @@ L<https://developers.facebook.com/support/beta-tier/>.
 
 =head2 Instance Methods
 
-=head3 C<< $fb->app_id() :Int >>
+=head3 C<< $fb->app_id >>
 
 Accessor method that returns application id.
 
-=head3 C<< $fb->secret() :Str >>
+=head3 C<< $fb->secret >>
 
 Accessor method that returns application secret.
 
-=head3 C<< $fb->ua() :Object >>
+=head3 C<< $fb->ua >>
 
 Accessor method that returns L<Furl::HTTP> object.
 
-=head3 C<< $fb->namespace() :Str >>
+=head3 C<< $fb->namespace >>
 
 Accessor method that returns application namespace.
 
-=head3 C<< $fb->access_token() :Str >>
+=head3 C<< $fb->access_token >>
 
 Accessor method that returns access token.
 
-=head3 C<< $fb->redirect_uri() :Str >>
+=head3 C<< $fb->redirect_uri >>
 
 Accessor method that returns URL that is used for user authorization.
 
-=head3 C<< $fb->batch_limit() :Int >>
+=head3 C<< $fb->batch_limit >>
 
 Accessor method that returns the maximum # of queries that can be set w/in a 
 single batch request. If the # of given queries exceeds this, then queries are 
 divided into multiple batch requests and responses are combined so it just 
 seems like a single batch request. Default value is 50 as API documentation says.
 
-=head3 C<< $fb->is_beta() :Bool >>
+=head3 C<< $fb->is_beta >>
 
 Accessor method that returns whether to use Beta tier or not.
 
-=head3 C<< $fb->uri($path :Str) :Object >>
+=head3 C<< $fb->uri($path) >>
 
 Returns URI object w/ the specified path. If is_beta returns true, the base url 
 is https://graph.beta.facebook.com/ . Otherwise its base url is 
@@ -636,19 +639,19 @@ should use C<uri()> or C<video_uri()> based on target path and parameters so
 you won't use C<uri()> or C<video_uri()> directly as long as you are using 
 requesting methods that are provided in this module.
 
-=head3 C<< $fb->video_uri($path :Str) :Object >>
+=head3 C<< $fb->video_uri($path) >>
 
 Returns URI object w/ the specified path that should only be used when posting 
 a video.
 
-=head3 C<< $fb->parse_signed_request($signed_request_str :Str) :HashRef >>
+=head3 C<< $fb->parse_signed_request($signed_request_str) >>
 
 It parses signed_request that Facebook Platform gives to your callback endpoint.
 
   my $req = Plack::Request->new($env);
   my $val = $fb->parse_signed_request($req->query_param('signed_request'));
 
-=head3 C<< $fb->auth_uri($args :HashRef) :Str >>
+=head3 C<< $fb->auth_uri(\%args) >>
 
 Returns URL for Facebook OAuth dialog. You can redirect your user to this 
 returning URL for authorization purpose. See 
@@ -660,12 +663,12 @@ L<https://developers.facebook.com/docs/reference/dialogs/oauth/> for details.
   });
   $c->redirect($auth_url);
 
-=head3 C<< $fb->set_access_token($access_token :Str) >>
+=head3 C<< $fb->set_access_token($access_token) >>
 
 Set $access_token as the access token to be used on C<request()>. C<access_token()> 
 returns this value.
 
-=head3 C<< $fb->get_app_token() :HashRef >>
+=head3 C<< $fb->get_app_token >>
 
 Obtain an access token for application. Give the returning value to 
 C<set_access_token()> and you can make request on behalf of your application. 
@@ -686,7 +689,7 @@ refetch token at an interval of your choice. Maybe you want to store token on
 DB and want this method to return the stored value. So you should override it 
 as you like.
 
-=head3 C<< $fb->get_user_token_by_code($code :Str) :HashRef >>
+=head3 C<< $fb->get_user_token_by_code($given_code) >>
 
 Obtain an access token for user based on C<$code>. C<$code> should be obtained 
 on your callback endpoint which is specified on C<eredirect_uri>. Give the 
@@ -699,7 +702,7 @@ the user.
   my $access_token = $token_ref->{access_token};
   my $expires      = $token_ref->{expires};
 
-=head3 C<< $fb->get($path :Str, $param_ref :HashRef, $headers_ref :ArrayRef) :HashRef >>
+=head3 C<< $fb->get($path, \%param, \@headers) >>
 
 Alias to C<request()> that sends C<GET> request.
 
@@ -711,7 +714,7 @@ Alias to C<request()> that sends C<GET> request.
   #    locale => 'en_US',
   #}
 
-=head3 C<< $fb->post($path :Str, $param_ref :HashRef, $headers_ref :ArrayRef) :HashRef >>
+=head3 C<< $fb->post($path, \%param, \@headers) >>
 
 Alias to C<request()> that sends C<POST> request.
 
@@ -722,22 +725,22 @@ Alias to C<request()> that sends C<POST> request.
   #
   #}
 
-=head3 C<< $fb->fetch($path :Str, $param_ref :HashRef, $headers_ref :ArrayRef) :HashRef >>
+=head3 C<< $fb->fetch($path, \%param, \@headers) >>
 
 Alias to C<get()> for those who got used to L<Facebook::Graph>
 
-=head3 C<< $fb->publish($path :Str, $param_ref :HashRef, $headers_ref :ArrayRef) :HashRef >>
+=head3 C<< $fb->publish($path, \%param, \@headers) >>
 
 Alias to C<post()> for those who got used to L<Facebook::Graph>
 
-=head3 C<< $fb->fetch_with_etag($path :Str, $params :HashRef, $etag_value :Str) >>
+=head3 C<< $fb->fetch_with_etag($path, \%param, $etag_value) >>
 
 Alias to C<request()> that sends C<GET> request w/ given ETag value. Returns 
 undef if requesting data is not modified. Otherwise it returns modified data.
 
   my $user = $fb->fetch_with_etag('/zuck', +{fields => 'email'}, $etag);
 
-=head3 C<< $fb->bulk_fetch($paths_ref :ArrayRef) :ArrayRef >>
+=head3 C<< $fb->bulk_fetch(\@paths) >>
 
 Request batch request and returns an array reference.
 
@@ -754,7 +757,7 @@ Request batch request and returns an array reference.
   #]
 
 
-=head3 C<< $fb->batch($requests_ref :ArrayRef) :ArrayRef >>
+=head3 C<< $fb->batch(\@requests) >>
 
 Request batch request and returns an array reference.
 
@@ -763,7 +766,7 @@ Request batch request and returns an array reference.
       +{method => 'GET', relative_url => 'oklahomer.docs'},
   ]);
 
-=head3 C<< $fb->batch_fast($requests_ref :ArrayRef) :ArrayRef >>
+=head3 C<< $fb->batch_fast(\@requests) >>
 
 Request batch request and returns results as array reference, but it doesn't 
 create L<Facebook::OpenGraph::Response> to handle each response.
@@ -787,7 +790,7 @@ create L<Facebook::OpenGraph::Response> to handle each response.
   #    ]
   #]
 
-=head3 C<< $fb->fql($fql_query :Str) :HashRef >>
+=head3 C<< $fb->fql($fql_query) >>
 
 Alias to C<request()> that optimizes query parameter for FQL query and sends 
 C<GET> request.
@@ -799,7 +802,7 @@ C<GET> request.
   #    }],
   #}
 
-=head3 C<< $fb->bulk_fql($fql_queries_ref :ArrayRef) :HashRef >>
+=head3 C<< $fb->bulk_fql(\@fql_queries) >>
 
 Alias to C<fql()> to request multiple FQL query at once.
 
@@ -825,7 +828,7 @@ Alias to C<fql()> to request multiple FQL query at once.
   #    ],
   #}
 
-=head3 C<< $fb->delete($path :Str, $param_ref :HashRef) :HashRef >>
+=head3 C<< $fb->delete($path, \%param) >>
 
 Alias to C<request()> that sends DELETE request to delete object on Facebook's 
 social graph. It sends POST request w/ method=delete query parameter when 
@@ -834,24 +837,24 @@ method=delete works.
 
   $fb->delete($object_id);
 
-=head3 C<< $fb->request($request_method :Str, $path :Str, $param_ref :HashRef, $headers_ref :ArrayRef) :Facebook::OpenGraph::Response >>
+=head3 C<< $fb->request($request_method, $path, \%param, \@headers) >>
 
 Sends request to Facebook Platform and returns L<Facebook::Graph::Response> 
 object.
 
-=head3 C<< $fb->create_response($http_status_code :Int, $http_status_message :Str, $headers_ref :ArrayRef, $response_content :Str) :Facebook::OpenGraph::Response >>
+=head3 C<< $fb->create_response($http_status_code, $http_status_message, \@response_headers, $response_content) >>
 
 Creates and returns L<Facebook::OpenGraph::Response>. If you wish to use 
 customized response class, then override this method to return 
 MyApp::Better::Response.
 
-=head3 C<< $fb->prep_param($param_ref :HashRef) :HashRef >>
+=head3 C<< $fb->prep_param(\%param) >>
 
 Handles sending parameters and format them in the way Graph API spec states. 
 This method is called in C<request()> so you don't usually use this method 
 directly.
 
-=head3 C<< $fb->prep_fields_recursive($val :Any) :Str >>
+=head3 C<< $fb->prep_fields_recursive(\@fields) >>
 
 Handles fields parameter and format it in the way Graph API spec states. 
 The main purpose of this method is to deal w/ Field Expansion
@@ -891,7 +894,7 @@ don't usually use this method directly.
   ]);
   # 'name,email,albums.fields(name,photos.fields(name,picture,tags.limit(2)).limit(3)).limit(5)'
 
-=head3 C<< $fb->publish_action($action_type :Str, $param_ref :HashRef) :HashRef >>
+=head3 C<< $fb->publish_action($action_type, \%param) >>
 
 Alias to C<request()> that optimizes body content and endpoint to sends C<POST> 
 request to publish Open Graph Action.
@@ -899,7 +902,7 @@ request to publish Open Graph Action.
   my $res = $fb->publish_action('give', +{crap => 'https://sample.com/poop/'});
   #{id => 123456}
 
-=head3 C<< $fb->create_test_users($settings_ref :ArrayRef) :ArrayRef >>
+=head3 C<< $fb->create_test_users(\@settings) >>
 
   my $res = $fb->create_test_users([
       +{
@@ -932,7 +935,7 @@ request to publish Open Graph Action.
 
 Alias to C<request()> that optimizes to create test users for your application.
 
-=head3 C<< $fb->check_object($target :Str) :HashRef >>
+=head3 C<< $fb->check_object($object_id_or_url) >>
 
 Alias to C<request()> that sends C<POST> request to Facebook Debugger to 
 check/update object.
