@@ -27,3 +27,6 @@ App's
 auth
 facebook
 json
+AppSecret
+PHP
+SDK

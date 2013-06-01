@@ -1,5 +1,8 @@
 Revision history for Perl extension Facebook::OpenGraph
 
+0.05    Sun Jun 02 01:00:00 2013
+        - Add use_appsecret_proof option to add appsecret_proof parameter
+
 0.04    Sat Jun 01 18:45:00 2013
         - Set capture_request option when initializing Furl::HTTP
         - Add and organize test

@@ -8,7 +8,7 @@ use Furl::HTTP;
 use Data::Recursive::Encode;
 use JSON 2 ();
 use Carp qw(croak);
-use Digest::SHA qw(hmac_sha256);
+use Digest::SHA qw(hmac_sha256 hmac_sha256_hex);
 use MIME::Base64::URLSafe qw(urlsafe_b64decode);
 use Scalar::Util qw(blessed);
 
@@ -19,31 +19,33 @@ sub new {
     my $args  = shift || +{};
 
     return bless +{
-        app_id       => $args->{app_id},
-        secret       => $args->{secret},
-        namespace    => $args->{namespace},
-        access_token => $args->{access_token},
-        redirect_uri => $args->{redirect_uri},
-        batch_limit  => $args->{batch_limit} || 50,
-        is_beta      => $args->{is_beta} || 0,
-        json         => $args->{json} || JSON->new->utf8,
-        ua           => $args->{ua} || Furl::HTTP->new(
-            capture_request => 1,
-            agent           => __PACKAGE__ . '/' . $VERSION,
+        app_id              => $args->{app_id},
+        secret              => $args->{secret},
+        namespace           => $args->{namespace},
+        access_token        => $args->{access_token},
+        redirect_uri        => $args->{redirect_uri},
+        batch_limit         => $args->{batch_limit} || 50,
+        is_beta             => $args->{is_beta} || 0,
+        json                => $args->{json} || JSON->new->utf8,
+        use_appsecret_proof => $args->{use_appsecret_proof} || 0,
+        ua                  => $args->{ua} || Furl::HTTP->new(
+            capture_request     => 1,
+            agent               => __PACKAGE__ . '/' . $VERSION,
         ),
     }, $class;
 }
 
 # accessors
-sub app_id       { shift->{app_id}       }
-sub secret       { shift->{secret}       }
-sub ua           { shift->{ua}           }
-sub namespace    { shift->{namespace}    }
-sub access_token { shift->{access_token} }
-sub redirect_uri { shift->{redirect_uri} }
-sub batch_limit  { shift->{batch_limit}  }
-sub is_beta      { shift->{is_beta}      }
-sub json         { shift->{json}         }
+sub app_id              { shift->{app_id}              }
+sub secret              { shift->{secret}              }
+sub ua                  { shift->{ua}                  }
+sub namespace           { shift->{namespace}           }
+sub access_token        { shift->{access_token}        }
+sub redirect_uri        { shift->{redirect_uri}        }
+sub batch_limit         { shift->{batch_limit}         }
+sub is_beta             { shift->{is_beta}             }
+sub json                { shift->{json}                }
+sub use_appsecret_proof { shift->{use_appsecret_proof} }
 
 sub uri {
     my $self = shift;
@@ -320,6 +322,20 @@ sub request {
         $uri->query_form(+{}),
         %{$param_ref || +{}},
     });
+
+    # Official document is not provided yet, but I'm pretty sure it's some sort 
+    # of signature that Amazon requires for each API request.
+    # Check PHP SDK(base_facebook.php) for detail. It already implemented it.
+    #  protected function getAppSecretProof($access_token) {
+    #    return hash_hmac('sha256', $access_token, $this->getAppSecret());
+    #  }
+    # To enable this you have to visit App Setting > Advanced > Security and 
+    # check "Require AppSecret Proof for Server API call"
+    if ($self->use_appsecret_proof && $self->access_token) {
+        croak 'app secret must be set' unless $self->secret;
+        $param_ref->{appsecret_proof} = $self->gen_appsecret_proof;
+    }
+
     $headers ||= [];
     push @$headers, (Authorization => sprintf('OAuth %s', $self->access_token))
         if $self->access_token;
@@ -376,6 +392,11 @@ sub request {
         $msg .= "\n" . $res->req_headers . $res->req_content  if  $res->req_headers;
         croak $msg;
     }
+}
+
+sub gen_appsecret_proof {
+    my $self = shift;
+    return hmac_sha256_hex($self->access_token, $self->secret);
 }
 
 sub create_response {
@@ -634,17 +655,27 @@ L<https://developers.facebook.com/support/beta-tier/>.
 JSON object that handles requesting parameters and API response. Default is 
 JSON->new->utf8.
 
+=item * use_appsecret_proof
+
+Whether to use appsecret_proof parameter or not. Default is 0.
+Official document is not provided yet, but official PHP SDK support it so I 
+implemented it anyway. Please refer to PHP SDK for detail. To enable this 
+parameter you have to visit App Setting > Advanced > Security and check 
+"Require AppSecret Proof for Server API call." 
+
 =back
 
   my $fb = Facebook::OpenGraph->new(+{
-      app_id       => 123456,
-      secret       => 'FooBarBuzz',
-      ua           => Furl::HTTP->new(capture_request => 1),
-      namespace    => 'fb-app-namespace', # for Open Graph Action
-      access_token => '', # will be appended to request header in request()
-      redirect_uri => 'https://sample.com/auth_callback', # for OAuth
-      batch_limit  => 50,
-      json         => JSON->new->utf8,
+      app_id              => 123456,
+      secret              => 'FooBarBuzz',
+      ua                  => Furl::HTTP->new(capture_request => 1),
+      namespace           => 'fb-app-namespace', # for Open Graph Action
+      access_token        => '', # will be appended to request header in request()
+      redirect_uri        => 'https://sample.com/auth_callback', # for OAuth
+      batch_limit         => 50,
+      json                => JSON->new->utf8,
+      is_beta             => 1,
+      use_appsecret_proof => 1,
   })
 
 =head2 Instance Methods
@@ -910,6 +941,12 @@ method=delete works.
 
 Sends request to Facebook Platform and returns L<Facebook::Graph::Response> 
 object.
+
+=head3 C<< $fb->gen_appsecret_proof >>
+
+Generate signature for appsecret_proof parameter. This method is called in 
+C<request()> if C<$self->use_appsecret_proof> is set. See 
+L<http://facebook-docs.oklahome.net/archives/52097348.html> for Japanese Info.
 
 =head3 C<< $fb->create_response($http_status_code, $http_status_message, \@response_headers, $response_content) >>
 
