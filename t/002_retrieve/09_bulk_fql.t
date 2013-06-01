@@ -54,6 +54,7 @@ subtest 'multi query w/out dependencies' => sub {
         is_deeply $args{headers}, [], 'no particular header';
         is $args{content}, '', 'content';
         is $args{method}, 'GET', 'HTTP GET method';
+
         my $uri = $args{url};
         is $uri->scheme, 'https', 'scheme';
         is $uri->path, '/fql', 'path';

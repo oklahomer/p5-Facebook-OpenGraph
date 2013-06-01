@@ -12,7 +12,7 @@ use Digest::SHA qw(hmac_sha256);
 use MIME::Base64::URLSafe qw(urlsafe_b64decode);
 use Scalar::Util qw(blessed);
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 sub new {
     my $class = shift;
@@ -21,13 +21,16 @@ sub new {
     return bless +{
         app_id       => $args->{app_id},
         secret       => $args->{secret},
-        ua           => $args->{ua} || Furl::HTTP->new(capture_request => 1),
         namespace    => $args->{namespace},
         access_token => $args->{access_token},
         redirect_uri => $args->{redirect_uri},
         batch_limit  => $args->{batch_limit} || 50,
         is_beta      => $args->{is_beta} || 0,
         json         => $args->{json} || JSON->new->utf8,
+        ua           => $args->{ua} || Furl::HTTP->new(
+            capture_request => 1,
+            agent           => __PACKAGE__ . '/' . $VERSION,
+        ),
     }, $class;
 }
 
@@ -43,17 +46,41 @@ sub is_beta      { shift->{is_beta}      }
 sub json         { shift->{json}         }
 
 sub uri {
-    my ($self, $path) = @_;
+    my $self = shift;
+
     my $base = $self->is_beta ? 'https://graph.beta.facebook.com/'
-                              : 'https://graph.facebook.com/';
-    return URI->new_abs($path, $base);
+             :                  'https://graph.facebook.com/'
+             ;
+
+    return $self->_uri($base, @_);
 }
 
 sub video_uri {
-    my ($self, $path) = @_;
+    my $self = shift;
+
     my $base = $self->is_beta ? 'https://graph-video.beta.facebook.com/'
-                              : 'https://graph-video.facebook.com/';
-    return URI->new_abs($path, $base);
+             :                  'https://graph-video.facebook.com/'
+             ;
+
+    return $self->_uri($base, @_);
+}
+
+sub site_uri {
+    my $self = shift;
+
+    my $base = $self->is_beta ? 'https://www.beta.facebook.com/'
+             :                  'https://www.facebook.com/'
+             ;
+    
+    return $self->_uri($base, @_);
+}
+
+sub _uri {
+    my ($self, $base, $path, $param_ref) = @_;
+    my $uri = URI->new_abs($path || '/', $base);
+    $uri->query_form($param_ref || +{});
+
+    return $uri;
 }
 
 # Using the signed_request Parameter: Step 1. Parse the signed_request
@@ -85,19 +112,16 @@ sub auth_uri {
         unless $self->redirect_uri && $self->app_id;
 
     if (my $scope_ref = ref $param_ref->{scope}) {
-        $param_ref->{scope} =
-            $scope_ref eq 'ARRAY' ? join ',', @{$param_ref->{scope}}
-                                  : croak 'scope must be string or array ref';
+        $param_ref->{scope} 
+            = $scope_ref eq 'ARRAY' ? join ',', @{$param_ref->{scope}}
+            :                         croak 'scope must be string or array ref'
+            ;
     }
     $param_ref->{redirect_uri} = $self->redirect_uri;
     $param_ref->{client_id}    = $self->app_id;
     $param_ref->{display}      ||= 'page';
-    my $base = $self->is_beta ? 'https://www.beta.facebook.com/'
-                              : 'https://www.facebook.com/';
-    my $uri = URI->new_abs('/dialog/oauth/', $base);
-    $uri->query_form($param_ref);
 
-    return $uri->as_string;
+    return $self->site_uri('/dialog/oauth/', $param_ref)->as_string;
 }
 
 sub set_access_token {
@@ -174,8 +198,7 @@ sub fetch_with_etag {
     my $header   = ['IF-None-Match' => $etag];
     my $response = $self->request('GET', $uri, $param_ref, $header);
 
-    return $response->is_modified ? $response->as_hashref
-                                  : undef;
+    return $response->is_modified ? $response->as_hashref : undef;
 }
 
 sub bulk_fetch {
@@ -192,9 +215,8 @@ sub bulk_fetch {
 # https://developers.facebook.com/docs/reference/api/batch/
 sub batch {
     my $self  = shift;
-    my $batch = shift;
 
-    my $responses_ref = $self->batch_fast($batch, @_);
+    my $responses_ref = $self->batch_fast(@_);
 
     # Devide response content and create response objects that correspond to
     # each request
@@ -302,15 +324,19 @@ sub request {
     push @$headers, (Authorization => sprintf('OAuth %s', $self->access_token))
         if $self->access_token;
 
-    my $content = undef;
+    my $content = '';
     if ($method eq 'POST') {
 
         if ($param_ref->{source}) {
             # post photo or video to /OBJECT_ID/(photos|videos)
 
             # When posting a video, use graph-video.facebook.com .
+            # base_facebook.php has an equivalent method isVideoPost()
+            # ($method == 'POST' && preg_match("/^(\/)(.+)(\/)(videos)$/", $path))
             # For other actions, use graph.facebook.com/VIDEO_ID/CONNECTION_TYPE
-            $uri->host($self->video_uri->host) if $uri->path =~ /\/videos$/;
+            $uri->host($self->video_uri->host)
+                if $uri->path =~ /^\/.+\/videos$/;
+                #if $uri->path =~ /^\/[^\/]+\/videos$/;
 
             push @$headers, (Content_Type => 'form-data');
             my $req = POST $uri, @$headers, Content => [%$param_ref];
@@ -330,7 +356,6 @@ sub request {
     }
     else {
         $uri->query_form($param_ref);
-        $content = '';
     }
 
     my ($res_minor_version, @res_elms) = $self->ua->request(
@@ -340,16 +365,17 @@ sub request {
         content => $content,
     );
 
-    my $response = $self->create_response(@res_elms);
-    # Use later version of Furl::HTTP to utilize req_headers and req_content.
-    # This Should be helpful for debugging
-    croak(
-        $response->error_string,
-        $response->req_headers,
-        $response->req_content,
-    ) unless $response->is_success;
-
-    return $response;
+    my $res = $self->create_response(@res_elms);
+    if ($res->is_success) {
+        return $res;
+    }
+    else {
+        # Use later version of Furl::HTTP to utilize req_headers and req_content.
+        # This Should be helpful for debugging
+        my $msg = $res->error_string;
+        $msg .= "\n" . $res->req_headers . $res->req_content  if  $res->req_headers;
+        croak $msg;
+    }
 }
 
 sub create_response {
@@ -471,7 +497,7 @@ Facebook::OpenGraph - Simple way to handle Facebook's Graph API.
 
 =head1 VERSION
 
-This is Facebook::OpenGraph version 0.03
+This is Facebook::OpenGraph version 0.04
 
 =head1 SYNOPSIS
     
@@ -517,7 +543,7 @@ This is Facebook::OpenGraph version 0.03
 =head1 DESCRIPTION
 
 Facebook::OpenGraph is a Perl interface to handle Facebook's Graph API.
-This was inspired by L<Facebook::Graph>, but focused on simplicity and 
+This was inspired by L<Facebook::Graph>, but this focuses on simplicity and 
 customizability because Facebook Platform modifies its API spec so frequently 
 and we have to be able to handle it in shorter period of time.
 
@@ -530,7 +556,7 @@ and updating Open Graph Object or web page w/ OGP, publishing Open Graph
 Action, deleting Open Graph Object and etc...
 
 You can specify endpoints and request parameters by yourself so it should be 
-easier to test latest API spec.
+easier to test the latest API spec.
 
 =head1 METHODS
 
@@ -548,21 +574,38 @@ I<%args> can contain...
 
 Facebook application ID. app_id and secret are required to get application 
 access token. Your app_id should be obtained from 
-L<https://developers.facebook.com/apps/>
+L<https://developers.facebook.com/apps/>.
 
 =item * secret
 
 Facebook application secret. Should be obtained from 
-L<https://developers.facebook.com/apps/>
+L<https://developers.facebook.com/apps/>.
 
 =item * ua
 
-L<Furl::HTTP> object. Default is equivalent to Furl::HTTP->new;
+L<Furl::HTTP> object. Default is equivalent to 
+Furl::HTTP->new(capture_request => 1). You should install 2.10 or later version 
+of Furl to enable capture_request option. Or you can specify keep_request 
+option for same purpose if you have Furl 2.09. capture_request option is 
+recommended since it will give you the request headers and content when 
+C<request()> fails. 
+
+  my $fb = Facebook::OpenGraph->new;
+  $fb->post('/me/feed', +{message => 'Hello, world!'});
+  #2500:- OAuthException:An active access token must be used to query information about the current user.
+  #POST /me/feed HTTP/1.1
+  #Connection: keep-alive
+  #User-Agent: Furl::HTTP/2.15
+  #Content-Type: application/x-www-form-urlencoded
+  #Content-Length: 27
+  #Host: graph.facebook.com
+  #
+  #message=Hello%2C%20world%21
 
 =item * namespace
 
 Facebook application namespace. This is used when you publish Open Graph Action 
-via C<publish_action()>
+via C<publish_action()>.
 
 =item * access_token
 
@@ -586,6 +629,13 @@ located at L<https://developers.facebook.com/docs/reference/api/batch/>
 Weather to use beta tier. See the official documentation for details. 
 L<https://developers.facebook.com/support/beta-tier/>.
 
+=item * json
+
+JSON object that handles requesting parameters and API response. Default is 
+JSON->new->utf8.
+
+=back
+
   my $fb = Facebook::OpenGraph->new(+{
       app_id       => 123456,
       secret       => 'FooBarBuzz',
@@ -594,9 +644,8 @@ L<https://developers.facebook.com/support/beta-tier/>.
       access_token => '', # will be appended to request header in request()
       redirect_uri => 'https://sample.com/auth_callback', # for OAuth
       batch_limit  => 50,
+      json         => JSON->new->utf8,
   })
-
-=back
 
 =head2 Instance Methods
 
@@ -635,19 +684,34 @@ seems like a single batch request. Default value is 50 as API documentation says
 
 Accessor method that returns whether to use Beta tier or not.
 
-=head3 C<< $fb->uri($path) >>
+=head3 C<< $fb->json >>
 
-Returns URI object w/ the specified path. If is_beta returns true, the base url 
-is https://graph.beta.facebook.com/ . Otherwise its base url is 
-https://graph.facebook.com/ . C<request()> automatically determines if it 
-should use C<uri()> or C<video_uri()> based on target path and parameters so 
-you won't use C<uri()> or C<video_uri()> directly as long as you are using 
+Accessor method that returns JSON object. This object will be passed to 
+Facebook::OpenGraph::Response via C<create_response()>.
+
+=head3 C<< $fb->uri($path, \%query_param) >>
+
+Returns URI object w/ the specified path and query parameter. If is_beta 
+returns true, the base url is https://graph.beta.facebook.com/ . Otherwise its 
+base url is https://graph.facebook.com/ . C<request()> automatically determines 
+if it should use C<uri()> or C<video_uri()> based on target path and parameters 
+so you won't use C<uri()> or C<video_uri()> directly as long as you are using 
 requesting methods that are provided in this module.
 
-=head3 C<< $fb->video_uri($path) >>
+=head3 C<< $fb->video_uri($path, \%query_param) >>
 
-Returns URI object w/ the specified path that should only be used when posting 
-a video.
+Returns URI object w/ the specified path and query parameter. This should only 
+be used when posting a video.
+
+=head3 C<< $fb->site_uri($path, \%query_param) >>
+
+Returns URI object w/ the specified path and query parameter. It is mainly 
+used to generate URL for auth dialog, but you could use this when redirecting 
+users to your Facebook page, App's Canvas page or any location on facebook.com. 
+
+  my $fb = Facebook::OpenGraph->new(+{is_beta => 1});
+  $c->redirect($fb->site_uri($path_to_canvas));
+  # https://www.beta.facebook.com/$path_to_canvas
 
 =head3 C<< $fb->parse_signed_request($signed_request_str) >>
 

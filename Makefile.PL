@@ -9,7 +9,7 @@ requires 'Furl';
 requires 'JSON';
 requires 'MIME::Base64::URLSafe';
 
-tests 't/*.t';
+tests 't/*.t t/*/*.t';
 author_tests 'xt';
 
 test_requires 'Test::More';

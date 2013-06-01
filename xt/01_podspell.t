@@ -23,3 +23,7 @@ API's
 refetch
 multi
 OGP
+App's
+auth
+facebook
+json

@@ -4,7 +4,7 @@ use Test::More;
 use Test::Exception;
 use Facebook::OpenGraph;
 
-subtest 'signed_request' => sub {
+subtest 'parse' => sub {
 
     my $signed_request = "vlXgu64BQGFSQrY0ZcJBZASMvYvTHu9GQ0YM9rjPSso.eyJhbGdvcml0aG0iOiJITUFDLVNIQTI1NiIsIjAiOiJwYXlsb2FkIn0";
     my $fb = Facebook::OpenGraph->new(+{
@@ -16,7 +16,7 @@ subtest 'signed_request' => sub {
         'algorithm' => 'HMAC-SHA256',
     };
 
-    is_deeply $datum_ref, $expected_datum_ref, 'data';
+    is_deeply $datum_ref, $expected_datum_ref, 'datum';
 
 };
 

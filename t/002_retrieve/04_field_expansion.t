@@ -7,7 +7,7 @@ use t::Util;
 use JSON 2 qw(encode_json);
 eval "use YAML qw(LoadFile)";
 plan skip_all => "YAML is not installed." if $@;
-
+    
 subtest 'field expansion' => sub {
 
     my $val = +{
@@ -77,7 +77,7 @@ subtest 'field expansion' => sub {
             ],
         }
     };
-
+    
     send_request {
 
         my $fb = Facebook::OpenGraph->new(+{
@@ -89,27 +89,9 @@ subtest 'field expansion' => sub {
         is_deeply $user, $val, 'user';
     
     } receive_request {
+        my %args = @_;
 
-        my %args   = @_;
-        my %query  = URI->new(delete $args{url})->query_form;
-        my $fields = $query{fields};
-
-        my $user_field_match = $fields =~ s/(^name,email,albums)//;
-        is $user_field_match, 1, 'user fields';
-
-        my $albums_limit_match = $fields =~ s/(^\.limit\(5\)|\.limit\(5\)$)//;
-        is $albums_limit_match, 1, 'albums limit';
-        my $albums_fields_match = $fields =~ s/^\.fields\(name,photos(.*)\)$/$1/;
-        is $albums_fields_match, 1, 'albums fields';
-
-        my $photos_limit_match = $fields =~ s/(^\.limit\(3\)|\.limit\(3\)$)//;
-        is $photos_limit_match, 1, 'photos limit';
-        my $photos_fields_match = $fields =~ s/^\.fields\(name,picture,tags(.*)\)/$1/;
-        is $photos_fields_match, 1, 'photos fields';
-
-        my $tags_limit_match  = $fields =~ m/\.limit\(2\)/;
-        is $tags_limit_match, 1, 'tags limit';
-
+        delete $args{url}; # tested in t/001_basic/07_field_expansion.t
         is_deeply(
             \%args,
             +{
@@ -143,7 +125,7 @@ subtest 'w/ other params' => sub {
         my %args  = @_;
         my $uri   = $args{url};
         my %query = $uri->query_form;
-        ok $query{locale}, 'locale';
+        is $query{locale}, 'ja_JP', 'locale';
         ok $query{fields}, 'fields';
 
         return +{
@@ -154,7 +136,6 @@ subtest 'w/ other params' => sub {
         }
 
     };
-
 };
 
 done_testing;

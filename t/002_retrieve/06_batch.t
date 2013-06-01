@@ -8,7 +8,7 @@ use t::Util;
 use JSON 2 qw(decode_json encode_json);
 
 
-subtest 'w/out token' => sub {
+subtest 'w/o token' => sub {
 
         my $fb = Facebook::OpenGraph->new;
         my $batch_queries = [

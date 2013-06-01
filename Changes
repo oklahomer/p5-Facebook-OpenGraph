@@ -1,5 +1,10 @@
 Revision history for Perl extension Facebook::OpenGraph
 
+0.04    Sat Jun 01 18:45:00 2013
+        - Set capture_request option when initializing Furl::HTTP
+        - Add and organize test
+        - Add document
+
 0.03    Fri May 17 20:45:00 2013
         - $res->req_headers and $res->req_content are available w/ later version of Furl
         - Store JSON object and reuse it for better performance

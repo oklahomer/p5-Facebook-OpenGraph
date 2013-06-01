@@ -10,7 +10,9 @@ subtest 'beta' => sub {
 
     subtest 'uri' => sub {
         my $uri = $fb->uri;
-        is $uri->host, 'graph.beta.facebook.com', 'beta uri';
+        is $uri->scheme, 'https', 'scheme';
+        is $uri->host, 'graph.beta.facebook.com', 'host';
+        is $uri->path, '/', 'path';
     };
 
     subtest 'uri w/ path' => sub {
@@ -18,14 +20,10 @@ subtest 'beta' => sub {
         is $uri->path, '/foo', 'path';
     };
 
-    subtest 'video_uri' => sub {
-        my $uri = $fb->video_uri;
-        is $uri->host, 'graph-video.beta.facebook.com', 'beta uri for video post';
-    };
-    
-    subtest 'video_uri w/ path' => sub {
-        my $uri = $fb->video_uri('/bar');
-        is $uri->path, '/bar', 'path';
+    subtest 'uri w/ path and query parameter' => sub {
+        my $uri = $fb->uri('/foo/bar', +{howdy => 'yall'});
+        is $uri->path, '/foo/bar', 'path';
+        is_deeply +{$uri->query_form}, +{howdy => 'yall'}, 'query parameter';
     };
 };
 
@@ -33,7 +31,9 @@ subtest 'production' => sub {
     my $fb = Facebook::OpenGraph->new;
     subtest 'uri' => sub {
         my $uri = $fb->uri;
+        is $uri->scheme, 'https', 'scheme';
         is $uri->host, 'graph.facebook.com', 'production uri';
+        is $uri->path, '/', 'path';
     };
     
     subtest 'uri w/ path' => sub {
@@ -41,14 +41,10 @@ subtest 'production' => sub {
         is $uri->path, '/foo', 'path';
     };
 
-    subtest 'video_uri' => sub {
-        my $uri = $fb->video_uri;
-        is $uri->host, 'graph-video.facebook.com', 'production uri for video post';
-    };
-    
-    subtest 'video_uri w/ path' => sub {
-        my $uri = $fb->video_uri('/bar');
-        is $uri->path, '/bar', 'path';
+    subtest 'uri w/ path and query parameter' => sub {
+        my $uri = $fb->uri('/foo/bar', +{howdy => 'yall'});
+        is $uri->path, '/foo/bar', 'path';
+        is_deeply +{$uri->query_form}, +{howdy => 'yall'}, 'query parameter';
     };
 };
 

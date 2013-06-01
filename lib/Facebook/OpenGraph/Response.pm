@@ -99,6 +99,7 @@ Facebook::OpenGraph::Response - Response object for Facebook::OpenGraph.
       content     => $response_content,
       req_headers => $req_headers,
       req_content => $req_content,
+      json        => JSON->new->utf8,
   });
 
 =head1 DESCRIPTION
@@ -140,6 +141,10 @@ Stringified request headers
 =item * req_content
 
 Request content
+
+=item * json
+
+JSON object
 
 =back
 
