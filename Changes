@@ -1,5 +1,11 @@
 Revision history for Perl extension Facebook::OpenGraph
 
+1.00    Sun Jun 02 22:00:00 2013
+        - Add use_post_method option
+          It enables you to send POST request for every API call with 
+          method=(GET|POST|DELETE) parameter. PHP SDK works this way.
+        - Bumped up version to 1.00. Yay!
+
 0.05    Sun Jun 02 01:00:00 2013
         - Add use_appsecret_proof option to add appsecret_proof parameter
 

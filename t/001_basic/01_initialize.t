@@ -20,6 +20,8 @@ subtest 'default' => sub {
     is $fb->redirect_uri, undef, 'redirect_uri is not set';
     is $fb->batch_limit, 50, 'default batch_limit is 50';
     is $fb->is_beta, 0, 'default is_beta is 0';
+    is $fb->use_appsecret_proof, 0, 'default use_appsecret_proof is 0';
+    is $fb->use_post_method, 0, 'default use_post_method is 0';
 
     my $json = $fb->json;
     isa_ok $json, 'JSON', '$fb->json isa JSON';
@@ -32,15 +34,17 @@ subtest 'default' => sub {
 subtest 'accessor' => sub {
     my $version = $Facebook::OpenGraph::VERSION;
     my $fb = Facebook::OpenGraph->new(+{
-        app_id       => '123456789',
-        secret       => 'secretkey',
-        ua           => Furl::HTTP->new(agent => "Facebook::OpenGraph/$version"),
-        namespace    => 'my_app_namespace', # mostly used to deal w/ open graph action
-        access_token => '123456789|fooBarBuzz',
-        redirect_uri => 'https://sample.com/auth_cb',
-        batch_limit  => 10,
-        is_beta      => 1,
-        js           => JSON->new->utf8,
+        app_id              => '123456789',
+        secret              => 'secretkey',
+        ua                  => Furl::HTTP->new(agent => "Facebook::OpenGraph/$version"),
+        namespace           => 'my_app_namespace', # mostly used to deal w/ open graph action
+        access_token        => '123456789|fooBarBuzz',
+        redirect_uri        => 'https://sample.com/auth_cb',
+        batch_limit         => 10,
+        is_beta             => 1,
+        js                  => JSON->new->utf8,
+        use_appsecret_proof => 1,
+        use_post_method     => 1,
     });
 
     is $fb->app_id, '123456789', 'app id';
@@ -50,6 +54,8 @@ subtest 'accessor' => sub {
     is $fb->redirect_uri, 'https://sample.com/auth_cb';
     is $fb->batch_limit, 10, 'batch limit';
     is $fb->is_beta, 1, 'is_beta';
+    is $fb->use_appsecret_proof, 1, 'use_appsecret_proof';
+    is $fb->use_post_method, 1, 'use_post_method';
 
     my $ua = $fb->ua;
     isa_ok $ua, 'Furl::HTTP', '$fb->ua isa Furl::HTTP';

@@ -12,7 +12,7 @@ use Digest::SHA qw(hmac_sha256 hmac_sha256_hex);
 use MIME::Base64::URLSafe qw(urlsafe_b64decode);
 use Scalar::Util qw(blessed);
 
-our $VERSION = '0.05';
+our $VERSION = '1.00';
 
 sub new {
     my $class = shift;
@@ -28,6 +28,7 @@ sub new {
         is_beta             => $args->{is_beta} || 0,
         json                => $args->{json} || JSON->new->utf8,
         use_appsecret_proof => $args->{use_appsecret_proof} || 0,
+        use_post_method     => $args->{use_post_method} || 0,
         ua                  => $args->{ua} || Furl::HTTP->new(
             capture_request     => 1,
             agent               => __PACKAGE__ . '/' . $VERSION,
@@ -46,6 +47,7 @@ sub batch_limit         { shift->{batch_limit}         }
 sub is_beta             { shift->{is_beta}             }
 sub json                { shift->{json}                }
 sub use_appsecret_proof { shift->{use_appsecret_proof} }
+sub use_post_method     { shift->{use_post_method}     }
 
 sub uri {
     my $self = shift;
@@ -336,6 +338,17 @@ sub request {
         $param_ref->{appsecret_proof} = $self->gen_appsecret_proof;
     }
 
+    # Use POST as default HTTP method and add method=(POST|GET|DELETE) to query
+    # parameter. Document says we can send HTTP DELETE method or, instead,
+    # HTTP POST method with ?method=delete to delete object. It does not say
+    # POST with method=(get|post) parameter works, but PHP SDK always sends POST
+    # with method parameter so... I just give you this option.
+    # Check PHP SDK's base_facebook.php for detail.
+    if ($self->{use_post_method}) {
+        $param_ref->{method} = $method;
+        $method = 'POST';
+    }
+
     $headers ||= [];
     push @$headers, (Authorization => sprintf('OAuth %s', $self->access_token))
         if $self->access_token;
@@ -518,7 +531,7 @@ Facebook::OpenGraph - Simple way to handle Facebook's Graph API.
 
 =head1 VERSION
 
-This is Facebook::OpenGraph version 0.05
+This is Facebook::OpenGraph version 1.00
 
 =head1 SYNOPSIS
     
@@ -719,6 +732,19 @@ Accessor method that returns whether to use Beta tier or not.
 
 Accessor method that returns JSON object. This object will be passed to 
 Facebook::OpenGraph::Response via C<create_response()>.
+
+=head3 C<< $fb->use_appsecret_proof >>
+
+Accessor method that returns whether to send appsecret_proof parameter on API 
+call. Official document is not provided yet, but PHP SDK has this option and 
+you can activate this option from App Setting > Advanced > Security.
+
+=head3 C<< $fb->use_post_method >>
+
+Accessor method that returns whether to use POST method for every API call and 
+alternatively set method=(GET|POST|DELETE) query parameter. PHP SDK works this 
+way. This might work well when you use multi-query or some other functions that use GET method while query string can be very long and you have to worry about 
+the maximum length of it.
 
 =head3 C<< $fb->uri($path, \%query_param) >>
 
