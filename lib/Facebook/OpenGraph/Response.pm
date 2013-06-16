@@ -33,7 +33,7 @@ sub is_success {
     return substr($self->code, 0, 1) == 2 || $self->code == 304;
 }
 
-# Errors
+# Errors: Error codes
 # https://developers.facebook.com/docs/reference/api/errors/
 sub error_string {
     my $self = shift;

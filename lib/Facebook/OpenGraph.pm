@@ -87,8 +87,8 @@ sub _uri {
     return $uri;
 }
 
-# Using the signed_request Parameter: Step 1. Parse the signed_request
-# https://developers.facebook.com/docs/howtos/login/signed-request/#step1
+# Using Login with Games on Facebook: Parsing the Signed Request
+# https://developers.facebook.com/docs/facebook-login/using-login-with-games/#parsingsr
 sub parse_signed_request {
     my ($self, $signed_request) = @_;
     croak 'signed_request is not given' unless $signed_request;
@@ -107,7 +107,7 @@ sub parse_signed_request {
     return $val;
 }
 
-# OAuth Dialog: Constructing a URL to the OAuth Dialog
+# OAuth Dialog: Constructing a URL to the OAuth dialog
 # https://developers.facebook.com/docs/reference/dialogs/oauth/
 sub auth_uri {
     my ($self, $param_ref) = @_;
@@ -133,8 +133,8 @@ sub set_access_token {
     $self->{access_token} = $token;
 }
 
-# Login as an App: Step 1. Obtain an App Access Token
-# https://developers.facebook.com/docs/howtos/login/login-as-app/#step1
+# Access Tokens: App Tokens
+# https://developers.facebook.com/docs/facebook-login/access-tokens/#apptokens
 sub get_app_token {
     my $self = shift;
 
@@ -143,8 +143,8 @@ sub get_app_token {
     return $token_ref;
 }
 
-# Login for Server-side Apps: Step 6. Exchange the code for an Access Token
-# https://developers.facebook.com/docs/howtos/login/server-side-login/#step6
+# The Login Flow for Web (without JavaScript SDK): Exchanging code for an access token
+# https://developers.facebook.com/docs/facebook-login/login-flow-for-web-no-jssdk/#exchangecode
 sub get_user_token_by_code {
     my ($self, $code) = @_;
 
@@ -279,7 +279,7 @@ sub batch_fast {
 }
 
 # Facebook Query Language (FQL)
-# https://developers.facebook.com/docs/reference/fql/
+# https://developers.facebook.com/docs/technical-guides/fql/
 sub fql {
     my $self  = shift;
     my $query = shift;
@@ -287,14 +287,14 @@ sub fql {
 }
 
 # Facebook Query Language (FQL): Multi-query
-# https://developers.facebook.com/docs/reference/fql/#multi
+# https://developers.facebook.com/docs/technical-guides/fql/#multi
 sub bulk_fql {
     my $self  = shift;
     my $batch = shift;
     return $self->fql($self->json->encode($batch), @_);
 }
 
-# Graph API: Deleting
+# Deleting: Objects
 # https://developers.facebook.com/docs/reference/api/deleting/
 sub delete {
     my $self      = shift;
@@ -448,7 +448,7 @@ sub prep_param {
         $param_ref->{fields} = $self->prep_fields_recursive($field_ref);
     }
 
-    # Object API
+    # Using the Object API
     # https://developers.facebook.com/docs/opengraph/using-object-api/
     my $object = $param_ref->{object};
     if ($object && ref $object eq 'HASH') {
@@ -482,8 +482,8 @@ sub prep_fields_recursive {
     }
 }
 
-# How-To: Publish an Action
-# https://developers.facebook.com/docs/technical-guides/opengraph/publish-action/#create
+# Using Actions: Publishing Actions
+# https://developers.facebook.com/docs/opengraph/using-actions/#publish
 sub publish_action {
     my $self   = shift;
     my $action = shift;
@@ -491,7 +491,7 @@ sub publish_action {
     return $self->post(sprintf('/me/%s:%s', $self->namespace, $action), @_);
 }
 
-# Test Users
+# Test Users: Creating
 # https://developers.facebook.com/docs/test_users/
 sub create_test_users {
     my $self         = shift;
@@ -511,8 +511,8 @@ sub create_test_users {
     return $self->batch(\@settings);
 }
 
-# Updating Objects 
-# https://developers.facebook.com/docs/technical-guides/opengraph/defining-an-object/#update
+# Using Self-Hosted Objects: Updating Objects 
+# https://developers.facebook.com/docs/opengraph/using-objects/#update
 sub check_object {
     my ($self, $target) = @_;
     my $param_ref = +{
