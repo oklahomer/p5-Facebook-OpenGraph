@@ -1,9 +1,10 @@
 use strict;
 use warnings;
 use Test::More;
-use Facebook::OpenGraph;
+use Test::Mock::Furl;
 use URI;
-use t::Util;
+use JSON 2 qw/encode_json/;
+use Facebook::OpenGraph;
 
 subtest 'user' => sub {
 
@@ -14,40 +15,41 @@ subtest 'user' => sub {
     };
     my $query = 'SELECT display_name, icon_url FROM application WHERE app_id = '.$app_id;
 
-    send_request {
-        
-        my $fb = Facebook::OpenGraph->new;
-        my $res = $fb->fql($query);
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
+            my $uri = URI->new;
+            $uri->query_form(+{q => $query});
+            is_deeply(
+                \%args,
+                +{
+                    headers => [],
+                    url     => 'https://graph.facebook.com/fql?'.$uri->query,
+                    method  => 'GET',
+                    content => '',
+                },
+                'args'
+            );
+    
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json(+{
+                    data => [
+                        $datum_ref,
+                    ],
+                }),
+            );
+        },
+    );
 
-        is_deeply $res->{data}, [$datum_ref], 'data';
-
-    } receive_request {
-
-        my $url = URI->new;
-        $url->query_form(+{q => $query});
-        my %args = @_;
-        is_deeply(
-            \%args,
-            +{
-                headers => [],
-                url     => 'https://graph.facebook.com/fql?'.$url->query,
-                method  => 'GET',
-                content => '',
-            },
-            'args'
-        );
-
-        return +{
-            status  => 200,
-            message => 'OK',
-            content => +{
-                data => [
-                    $datum_ref,
-                ],
-            }
-        };
-
-    };
+    my $fb = Facebook::OpenGraph->new;
+    my $res = $fb->fql($query);
+    
+    is_deeply $res->{data}, [$datum_ref], 'data';
+    
 };
 
 done_testing;

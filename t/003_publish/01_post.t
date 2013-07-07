@@ -1,8 +1,9 @@
 use strict;
 use warnings;
 use Test::More;
+use Test::Mock::Furl;
+use JSON 2 qw(encode_json);
 use Facebook::OpenGraph;
-use t::Util;
 
 subtest 'create test user' => sub {
 
@@ -14,51 +15,54 @@ subtest 'create test user' => sub {
         password     => 67890,
     };
 
-    send_request {
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
 
-        my $fb = Facebook::OpenGraph->new(+{
-            app_id => 1234556,
-            secret => 'secret',
-            access_token => '12345qwerty',
-        });
-        my $response = $fb->publish(
-            $fb->app_id.'/accounts/test-users',
-            +{
-                installed   => 'true',
-                permissions => 'read_stream',
-            },
-        );
-        is_deeply $response, $datum_ref, 'datum';
+            is_deeply(
+                delete $args{content},
+                +{
+                    permissions => 'read_stream',
+                    installed   => 'true',
+                },
+                'content'
+            );
+            is_deeply(
+                \%args,
+                +{
+                    headers => ['Authorization' => 'OAuth 12345qwerty'],
+                    url     => 'https://graph.facebook.com/1234556/accounts/test-users',
+                    method  => 'POST',
+                },
+                'args'
+            );
+    
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json($datum_ref),
+            );
+        },
+    );
 
-    } receive_request {
+    my $fb = Facebook::OpenGraph->new(+{
+        app_id => 1234556,
+        secret => 'secret',
+        access_token => '12345qwerty',
+    });
 
-        my %args = @_;
-        is_deeply(
-            delete $args{content},
-            +{
-                permissions => 'read_stream',
-                installed   => 'true',
-            },
-            'content'
-        );
-        is_deeply(
-            \%args,
-            +{
-                headers => ['Authorization' => 'OAuth 12345qwerty'],
-                url     => 'https://graph.facebook.com/1234556/accounts/test-users',
-                method  => 'POST',
-            },
-            'args'
-        );
+    my $response = $fb->publish(
+        $fb->app_id.'/accounts/test-users',
+        +{
+            installed   => 'true',
+            permissions => 'read_stream',
+        },
+    );
 
-        return +{
-            headers => [],
-            status  => 200,
-            message => 'OK',
-            content => $datum_ref,
-        };
+    is_deeply $response, $datum_ref, 'datum';
 
-    }
 };
 
 done_testing;

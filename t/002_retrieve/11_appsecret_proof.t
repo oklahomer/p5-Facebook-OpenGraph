@@ -1,47 +1,49 @@
 use strict;
 use warnings;
 use Test::More;
+use Test::Mock::Furl;
 use Test::Exception;
+use JSON 2 qw(encode_json);
 use Facebook::OpenGraph;
-use t::Util;
 
 subtest 'w/o appsecret_proof' => sub {
 
-    send_request {
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
+            is $args{appsecret_proof}, undef, 'appsecret_proof not given';
+    
+            return (
+                1,
+                400,
+                'Bad Request',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json(+{
+                    error => +{
+                        code          => 100,
+                        type          => 'GraphMethodException',
+                        message       => 'API calls from the server require an appsecret_proof argument',
+                        error_subcode => '',
+                    },
+                }),
+            );
 
-        my $fb = Facebook::OpenGraph->new(+{
-            access_token        => 'qwerty',
-            use_appsecret_proof => 0,
-        });
+        },
+    );
 
-        throws_ok(
-            sub {
-                my $user = $fb->get('/me');
-            },
-            qr/100:- GraphMethodException:API calls from the server require an appsecret_proof argument/,
-            'appsecret_proof is required',
-        );
+    my $fb = Facebook::OpenGraph->new(+{
+        access_token        => 'qwerty',
+        use_appsecret_proof => 0,
+    });
 
-    } receive_request {
+    throws_ok(
+        sub {
+            my $user = $fb->get('/me');
+        },
+        qr/100:- GraphMethodException:API calls from the server require an appsecret_proof argument/,
+        'appsecret_proof is required',
+    );
 
-        my %args = @_;
-        is $args{appsecret_proof}, undef, 'appsecret_proof not given';
-
-        return +{
-            headers => [], 
-            status  => 400,
-            message => 'Bad Request',
-            content => +{
-                error => +{
-                    code          => 100,
-                    type          => 'GraphMethodException',
-                    message       => 'API calls from the server require an appsecret_proof argument',
-                    error_subcode => '',
-                },
-            }
-        };
-
-    };
 };
 
 subtest 'w/ appsecret_proof' => sub {
@@ -56,33 +58,31 @@ subtest 'w/ appsecret_proof' => sub {
         gender     => 'male', # male or female. no other "politically correct" value :-(
         link       => 'http://www.facebook.com/zuck',
     };
+
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($self, %args) = @_;
+            my $uri  = $args{url};
+            my $query_ref = +{$uri->query_form};
+            is $query_ref->{appsecret_proof}, '94a4877c83fbc2e1a0b182b3927a1f90dbf3f6e0e35513448a50c72aa49a12f4', 'appsecret_proof';
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json($datum_ref),
+            );
+        },
+    );
+
+    my $fb = Facebook::OpenGraph->new(+{
+        access_token        => 'qwerty',
+        use_appsecret_proof => 1,
+        secret              => 'TheKingHasEarsShapedLikeADonkey',
+    });
+    my $user = $fb->get('/me');
     
-    send_request {
-
-        my $fb = Facebook::OpenGraph->new(+{
-            access_token        => 'qwerty',
-            use_appsecret_proof => 1,
-            secret              => 'TheKingHasEarsShapedLikeADonkey',
-        });
-        my $user = $fb->get('/me');
-        
-        is_deeply $datum_ref, $user, 'datum';
-
-    } receive_request {
-
-        my %args = @_;
-        my $uri  = $args{url};
-        my $query_ref = +{$uri->query_form};
-        is $query_ref->{appsecret_proof}, '94a4877c83fbc2e1a0b182b3927a1f90dbf3f6e0e35513448a50c72aa49a12f4', 'appsecret_proof';
-        return +{
-            headers => [],
-            status  => 200,
-            message => 'OK',
-            content => $datum_ref,
-        };
-
-    };
-
+    is_deeply $datum_ref, $user, 'datum';
 };
 
 

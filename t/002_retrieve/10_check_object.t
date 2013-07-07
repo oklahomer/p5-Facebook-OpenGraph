@@ -1,10 +1,10 @@
 use strict;
 use warnings;
 use Test::More;
+use Test::Mock::Furl;
 use Test::Exception;
-use Facebook::OpenGraph;
-use t::Util;
 use JSON 2 qw(encode_json);
+use Facebook::OpenGraph;
 
 # samples URLs are found at https://developers.facebook.com/tools/debug/examples/
 subtest 'good'  => sub {
@@ -31,38 +31,39 @@ subtest 'good'  => sub {
         site_name    => 'IMDb',
     };
 
-    send_request {
-
-        my $fb = Facebook::OpenGraph->new;
-        my $response   = $fb->check_object($target);
-
-        is_deeply $response, $val, 'response';
-
-    } receive_request {
-    
-        my %args = @_;
-        is_deeply(
-            \%args,
-            +{
-                headers => [],
-                method  => 'POST',
-                url     => 'https://graph.facebook.com/',
-                content => +{
-                    id     => $target,
-                    scrape => 'true',
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
+            is_deeply(
+                \%args,
+                +{
+                    headers => [],
+                    method  => 'POST',
+                    url     => 'https://graph.facebook.com/',
+                    content => +{
+                        id     => $target,
+                        scrape => 'true',
+                    },
                 },
-            },
-            'args',
-        );
-
-        return +{
-            message => 'OK',
-            status  => 200,
-            headers => [],
-            content => $val,
-        };
+                'args',
+            );
     
-    };
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json($val),
+            );
+
+        },
+    );
+
+    my $fb = Facebook::OpenGraph->new;
+    my $response   = $fb->check_object($target);
+
+    is_deeply $response, $val, 'response';
+
 };
 
 subtest 'bad app id' => sub {
@@ -73,42 +74,42 @@ subtest 'bad app id' => sub {
     my $error_type    = 'Exception';
     my $error_message = "Object at URL 'https://developers.facebook.com/tools/debug/examples/bad_app_id' of type 'website' is invalid because the given value 'Paul is Awesome' for property 'fb:app_id' could not be parsed as type 'fbid'.";
 
-    send_request {
-
-        my $fb = Facebook::OpenGraph->new;
-        throws_ok sub { $fb->check_object($target) }, qr/$error_code:- $error_type:$error_message/, 'exception';
-
-    } receive_request {
-
-        my %args = @_;
-        is_deeply(
-            \%args,
-            +{
-                method  => 'POST',
-                headers => [],
-                url     => 'https://graph.facebook.com/',
-                content => +{
-                    id     => $target,
-                    scrape => 'true',
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
+            is_deeply(
+                \%args,
+                +{
+                    method  => 'POST',
+                    headers => [],
+                    url     => 'https://graph.facebook.com/',
+                    content => +{
+                        id     => $target,
+                        scrape => 'true',
+                    },
                 },
-            },
-            'args'
-        );
-        
-        return +{
-            status  => 500,
-            headers => [],
-            message => 'Internal Server Error',
-            content => encode_json(+{
-                error => +{
-                    type    => $error_type,
-                    message => $error_message,
-                    code    => $error_code,
-                },
-            }),
-        };
+                'args'
+            );
+            
+            return (
+                1,
+                500,
+                'Internal Server Error',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json(+{
+                    error => +{
+                        type    => $error_type,
+                        message => $error_message,
+                        code    => $error_code,
+                    },
+                }),
+            );
+        },
+    );
 
-    };
+    my $fb = Facebook::OpenGraph->new;
+    throws_ok sub { $fb->check_object($target) }, qr/$error_code:- $error_type:$error_message/, 'exception';
+
 };
 
 subtest 'bad domain' => sub {
@@ -129,39 +130,40 @@ subtest 'bad domain' => sub {
         ],
     };
 
-    send_request {
-
-        my $fb = Facebook::OpenGraph->new;
-        my $response = $fb->check_object($target);
-
-        is_deeply $response, $val, 'response';
-
-    } receive_request {
-
-        my %args = @_;
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($self, %args) = @_;
         
-        is_deeply(
-            \%args,
-            +{
-                headers => [],
-                method  => 'POST',
-                url     => 'https://graph.facebook.com/',
-                content => +{
-                    id     => $target,
-                    scrape => 'true',
+            is_deeply(
+                \%args,
+                +{
+                    headers => [],
+                    method  => 'POST',
+                    url     => 'https://graph.facebook.com/',
+                    content => +{
+                        id     => $target,
+                        scrape => 'true',
+                    },
                 },
-            },
-            'args'
-        );
+                'args'
+            );
+    
+            return (
+                1,
+                200, # Isn't it weird that they give 500 for bad app_id and now give us 200?
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json($val),
+            );
 
-        return +{
-            status  => 200, # Isn't it weird that they give 500 for bad app_id and now give us 200?
-            message => 'OK',
-            headers => [],
-            content => $val,
-        };
+        },
+    );
 
-    };
+    my $fb = Facebook::OpenGraph->new;
+    my $response = $fb->check_object($target);
+
+    is_deeply $response, $val, 'response';
+
 };
 
 subtest 'bad type' => sub {
@@ -172,42 +174,43 @@ subtest 'bad type' => sub {
     my $error_type    = 'Exception';
     my $error_message = "Object at URL 'https://developers.facebook.com/tools/debug/examples/bad_type' is invalid because the configured 'og:type' of 'paul isn't a type' is invalid.";
 
-    send_request {
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
 
-        my $fb = Facebook::OpenGraph->new;
-        throws_ok sub { $fb->check_object($target) }, qr/$error_code:- $error_type:$error_message/, 'exception';
-
-    } receive_request {
-
-        my %args = @_;
-        is_deeply(
-            \%args,
-            +{
-                headers => [],
-                method  => 'POST',
-                url     => 'https://graph.facebook.com/',
-                content => +{
-                    id     => $target,
-                    scrape => 'true',
+            is_deeply(
+                \%args,
+                +{
+                    headers => [],
+                    method  => 'POST',
+                    url     => 'https://graph.facebook.com/',
+                    content => +{
+                        id     => $target,
+                        scrape => 'true',
+                    },
                 },
-            },
-            'args'
-        );
+                'args'
+            );
+    
+            return (
+                1,
+                500,
+                'Internal Server Error',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json(+{
+                    error => +{
+                        code    => $error_code,
+                        type    => $error_type,
+                        message => $error_message,
+                    },
+                }),
+            );
+            
+        },
+    );
 
-        return +{
-            content => encode_json(+{
-                error => +{
-                    code    => $error_code,
-                    type    => $error_type,
-                    message => $error_message,
-                },
-            }),
-            message => 'Internal Server Error',
-            status  => 500,
-            headers => [],
-        };
-
-    };
+    my $fb = Facebook::OpenGraph->new;
+    throws_ok sub { $fb->check_object($target) }, qr/$error_code:- $error_type:$error_message/, 'exception';
 
 };
 
@@ -223,38 +226,39 @@ subtest 'missing property' => sub {
         updated_time => '2012-11-24T15:47:23+000',
     };
 
-    send_request {
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
 
-        my $fb = Facebook::OpenGraph->new;
-        my $response = $fb->check_object($target);
-
-        is_deeply $response, $val, 'result';
-
-    } receive_request {
-
-        my %args = @_;
-        is_deeply(
-            \%args,
-            +{
-                headers => [],
-                method  => 'POST',
-                url     => 'https://graph.facebook.com/',
-                content => +{
-                    id     => $target,
-                    scrape => 'true',
+            is_deeply(
+                \%args,
+                +{
+                    headers => [],
+                    method  => 'POST',
+                    url     => 'https://graph.facebook.com/',
+                    content => +{
+                        id     => $target,
+                        scrape => 'true',
+                    },
                 },
-            },
-            'args'
-        );
+                'args'
+            );
+    
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json($val),
+            );
 
-        return +{
-            status  => 200,
-            message => 'OK',
-            content => $val,
-            headers => [],
-        };
+        },
+    );
 
-    };
+    my $fb = Facebook::OpenGraph->new;
+    my $response = $fb->check_object($target);
+
+    is_deeply $response, $val, 'result';
 
 };
 
@@ -278,39 +282,40 @@ subtest 'invalid property' => sub {
         ],
     };
 
-    send_request {
+    $Mock_furl_http->mock(
+        request => sub {
 
-        my $fb = Facebook::OpenGraph->new;
-        my $response = eval { $fb->check_object($target); };
+            my ($self, %args) = @_;
 
-        is_deeply $response, $val, 'response';
-
-    } receive_request {
-
-        my %args = @_;
-        is_deeply(
-            \%args,
-            +{
-                headers => [],
-                method  => 'POST',
-                url     => 'https://graph.facebook.com/',
-                content => +{
-                    id     => $target,
-                    scrape => 'true',
+            is_deeply(
+                \%args,
+                +{
+                    headers => [],
+                    method  => 'POST',
+                    url     => 'https://graph.facebook.com/',
+                    content => +{
+                        id     => $target,
+                        scrape => 'true',
+                    },
                 },
-            },
-            'args'
-        );
+                'args'
+            );
 
-        return +{
-            status  => 200,
-            message => 'OK',
-            content => $val,
-            headers => [],
-        };
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json($val),
+            );
 
-    };
+        },
+    );
 
+    my $fb = Facebook::OpenGraph->new;
+    my $response = eval { $fb->check_object($target); };
+
+    is_deeply $response, $val, 'response';
 
 };
 

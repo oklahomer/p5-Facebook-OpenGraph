@@ -2,11 +2,9 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Exception;
-use Facebook::OpenGraph;
-use URI;
-use t::Util;
+use Test::Mock::Furl;
 use JSON 2 qw(decode_json encode_json);
-
+use Facebook::OpenGraph;
 
 subtest 'w/o token' => sub {
 
@@ -51,131 +49,132 @@ subtest 'w/ valid token' => sub {
         likes => 10126,
     };
 
-    send_request {
-
-        my $fb = Facebook::OpenGraph->new(+{
-            access_token => '123456789|XfSeFWB-0EQ0qyipMdmNpJEAuPk',
-        });
-        my $data_ref = $fb->batch([
-            +{method => 'GET', relative_url => 'zuck'},
-            +{method => 'GET', relative_url => 'oklahomer.docs'},
-        ]);
-
-        is_deeply(
-            $data_ref,
-            [
-                $zuck,
-                $oklahomer,
-            ],
-            'data',
-        );
-
-    } receive_request {
-
-        my %args = @_;
-        is_deeply(
-            decode_json(delete $args{content}->{batch}),
-            [
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
+            is_deeply(
+                decode_json(delete $args{content}->{batch}),
+                [
+                    +{
+                        method       => 'GET',
+                        relative_url => 'zuck',
+                    },
+                    +{
+                        method       => 'GET',
+                        relative_url => 'oklahomer.docs',
+                    },
+                ],
+                'batch'
+            );
+            is_deeply(
+                \%args,
                 +{
-                    method       => 'GET',
-                    relative_url => 'zuck',
+                    url     => 'https://graph.facebook.com/',
+                    method  => 'POST',
+                    headers => ['Authorization' => 'OAuth 123456789|XfSeFWB-0EQ0qyipMdmNpJEAuPk'],
+                    content => +{
+                        access_token => '123456789|XfSeFWB-0EQ0qyipMdmNpJEAuPk',
+                    },
                 },
-                +{
-                    method       => 'GET',
-                    relative_url => 'oklahomer.docs',
-                },
-            ],
-            'batch'
-        );
-        is_deeply(
-            \%args,
-            +{
-                url     => 'https://graph.facebook.com/',
-                method  => 'POST',
-                headers => ['Authorization' => 'OAuth 123456789|XfSeFWB-0EQ0qyipMdmNpJEAuPk'],
-                content => +{
-                    access_token => '123456789|XfSeFWB-0EQ0qyipMdmNpJEAuPk',
-                },
-            },
-            'args'
-        );
+                'args'
+            );
+    
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json([
+                    +{
+                        code => 200,
+                        headers => [
+                            +{
+                                name  => "Access-Control-Allow-Origin",
+                                value => "*"
+                            },
+                            +{
+                                name  => "Cache-Control",
+                                value => 'private, no-cache, no-store, must-revalidate'
+                            },
+                            +{
+                                name  => "Connection",
+                                value => "close"
+                            },
+                            +{
+                                name => "Content-Type",
+                                value => "text/javascript; charset=UTF-8"
+                            },
+                            +{
+                                name => "ETag",
+                                value => "539feb8a445c3d20a2ebacd02db380b27243b255"
+                            },
+                            +{
+                                name => "Expires",
+                                value => "Sat, 01 Jan 2000 00:00:00 GMT"
+                            },
+                            +{
+                                name => "Pragma",
+                                value => "no-cache"
+                            }
+                        ],
+                        body => encode_json($zuck),
+                    },
+                    {
+                        code => 200,
+                        headers => [
+                            +{
+                                name => "Access-Control-Allow-Origin",
+                                value => "*"
+                            },
+                            +{
+                                name => "Cache-Control",
+                                value => "private, no-cache, no-store, must-revalidate"
+                            },
+                            +{
+                                name => "Connection",
+                                value => "close"
+                            },
+                            +{
+                                name => "Content-Type",
+                                value => "text/javascript; charset=UTF-8"
+                            },
+                            +{
+                                name => "ETag",
+                                value => "2b6e34285cc05942f8ddd4f8abec7b66c6493184"
+                            },
+                            +{
+                                name => "Expires",
+                                value => "Sat, 01 Jan 2000 00:00:00 GMT"
+                            },
+                            +{
+                                name => "Pragma",
+                                value => "no-cache"
+                            }
+                        ],
+                        body => encode_json($oklahomer),
+                    }
+                ]),
+            );
 
-        return +{
-            status  => 200,
-            headers => [],
-            message => 'OK',
-            content => encode_json([
-                +{
-                    code => 200,
-                    headers => [
-                        +{
-                            name  => "Access-Control-Allow-Origin",
-                            value => "*"
-                        },
-                        +{
-                            name  => "Cache-Control",
-                            value => 'private, no-cache, no-store, must-revalidate'
-                        },
-                        +{
-                            name  => "Connection",
-                            value => "close"
-                        },
-                        +{
-                            name => "Content-Type",
-                            value => "text/javascript; charset=UTF-8"
-                        },
-                        +{
-                            name => "ETag",
-                            value => "539feb8a445c3d20a2ebacd02db380b27243b255"
-                        },
-                        +{
-                            name => "Expires",
-                            value => "Sat, 01 Jan 2000 00:00:00 GMT"
-                        },
-                        +{
-                            name => "Pragma",
-                            value => "no-cache"
-                        }
-                    ],
-                    body => encode_json($zuck),
-                },
-                {
-                    code => 200,
-                    headers => [
-                        +{
-                            name => "Access-Control-Allow-Origin",
-                            value => "*"
-                        },
-                        +{
-                            name => "Cache-Control",
-                            value => "private, no-cache, no-store, must-revalidate"
-                        },
-                        +{
-                            name => "Connection",
-                            value => "close"
-                        },
-                        +{
-                            name => "Content-Type",
-                            value => "text/javascript; charset=UTF-8"
-                        },
-                        +{
-                            name => "ETag",
-                            value => "2b6e34285cc05942f8ddd4f8abec7b66c6493184"
-                        },
-                        +{
-                            name => "Expires",
-                            value => "Sat, 01 Jan 2000 00:00:00 GMT"
-                        },
-                        +{
-                            name => "Pragma",
-                            value => "no-cache"
-                        }
-                    ],
-                    body => encode_json($oklahomer),
-                }
-            ]),
-        }
-    }
+        },
+    );
+
+    my $fb = Facebook::OpenGraph->new(+{
+        access_token => '123456789|XfSeFWB-0EQ0qyipMdmNpJEAuPk',
+    });
+    my $data_ref = $fb->batch([
+        +{method => 'GET', relative_url => 'zuck'},
+        +{method => 'GET', relative_url => 'oklahomer.docs'},
+    ]);
+
+    is_deeply(
+        $data_ref,
+        [
+            $zuck,
+            $oklahomer,
+        ],
+        'data',
+    );
     
 };
 
@@ -309,73 +308,72 @@ subtest 'check batch limit loop' => sub {
         batch_limit  => 2,
     });
 
-    send_request {
-
-        my $data_ref = $fb->batch([
-            +{ method => 'GET', relative_url => 'zuck'           },
-            +{ method => 'GET', relative_url => 'oklahomer.docs' },
-            +{ method => 'GET', relative_url => 'go.hagiwara'    },
-            +{ method => 'GET', relative_url => 'ChrisHughes'    },
-            +{ method => 'GET', relative_url => 'moskov'         },
-            +{ method => 'GET', relative_url => 'uco.bronchos'   },
-        ]);
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
+            $request_cnt++;
+            my $end_cnt = $start_cnt + $fb->batch_limit - 1;
+            my @profile_parts = @profiles[$start_cnt..$end_cnt];
+            $start_cnt = $end_cnt + 1;
     
-        is_deeply($data_ref, \@profiles, 'batch');
+            my @returning_data;
+            for my $profile (@profile_parts) {
+                push @returning_data, +{
+                    code => 200,
+                    headers => [
+                        +{
+                            name  => "Access-Control-Allow-Origin",
+                            value => "*"
+                        },
+                        +{
+                            name  => "Cache-Control",
+                            value => 'private, no-cache, no-store, must-revalidate'
+                        },
+                        +{
+                            name  => "Connection",
+                            value => "close"
+                        },
+                        +{
+                            name => "Content-Type",
+                            value => "text/javascript; charset=UTF-8"
+                        },
+                        +{
+                            name => "ETag",
+                            value => "539feb8a445c3d20a2ebacd02db380b27243b255"
+                        },
+                        +{
+                            name => "Expires",
+                            value => "Sat, 01 Jan 2000 00:00:00 GMT"
+                        },
+                        +{
+                            name => "Pragma",
+                            value => "no-cache"
+                        }
+                    ],
+                    body => encode_json($profile),
+                };
+            }
+    
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json(\@returning_data),
+            );
+        },
+    );
 
-    } receive_request {
-        
-        $request_cnt++;
-        my %args = @_;
-        my $end_cnt = $start_cnt + $fb->batch_limit - 1;
-        my @profile_parts = @profiles[$start_cnt..$end_cnt];
-        $start_cnt = $end_cnt + 1;
+    my $data_ref = $fb->batch([
+        +{ method => 'GET', relative_url => 'zuck'           },
+        +{ method => 'GET', relative_url => 'oklahomer.docs' },
+        +{ method => 'GET', relative_url => 'go.hagiwara'    },
+        +{ method => 'GET', relative_url => 'ChrisHughes'    },
+        +{ method => 'GET', relative_url => 'moskov'         },
+        +{ method => 'GET', relative_url => 'uco.bronchos'   },
+    ]);
 
-        my @returning_data;
-        for my $profile (@profile_parts) {
-            push @returning_data, +{
-                code => 200,
-                headers => [
-                    +{
-                        name  => "Access-Control-Allow-Origin",
-                        value => "*"
-                    },
-                    +{
-                        name  => "Cache-Control",
-                        value => 'private, no-cache, no-store, must-revalidate'
-                    },
-                    +{
-                        name  => "Connection",
-                        value => "close"
-                    },
-                    +{
-                        name => "Content-Type",
-                        value => "text/javascript; charset=UTF-8"
-                    },
-                    +{
-                        name => "ETag",
-                        value => "539feb8a445c3d20a2ebacd02db380b27243b255"
-                    },
-                    +{
-                        name => "Expires",
-                        value => "Sat, 01 Jan 2000 00:00:00 GMT"
-                    },
-                    +{
-                        name => "Pragma",
-                        value => "no-cache"
-                    }
-                ],
-                body => encode_json($profile),
-            };
-        }
-
-        return +{
-            status  => 200,
-            headers => [],
-            message => 'OK',
-            content => encode_json(\@returning_data),
-        }
-
-    }
+    is_deeply($data_ref, \@profiles, 'batch');
 
 };
 

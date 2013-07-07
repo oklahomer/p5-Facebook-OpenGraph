@@ -1,9 +1,9 @@
 use strict;
 use warnings;
 use Test::More;
-use Facebook::OpenGraph;
-use t::Util;
+use Test::Mock::Furl;
 use JSON 2 qw(encode_json);
+use Facebook::OpenGraph;
 
 subtest 'create test user' => sub {
 
@@ -24,53 +24,55 @@ subtest 'create test user' => sub {
         },
     ];
 
-    send_request {
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
 
-        my $fb = Facebook::OpenGraph->new(+{
-            app_id => 1234556,
-            secret => 'secret',
-            access_token => '12345qwerty',
-        });
-        my $res = $fb->create_test_users([
-            +{
-                permissions => [qw/publish_actions/],
-                locale      => 'en_US',
-                installed   => 'true',
-            },
-            +{
-                permissions => [qw/publish_actions email read_stream/],
-                locale      => 'ja_JP', 
-                installed   => 'true',
-            },
-        ]);
-        is_deeply $res, $data_ref, 'data';
+            is $args{url}, 'https://graph.facebook.com/', 'end point';
+            is $args{method}, 'POST', 'method';
+            is_deeply $args{headers}, ['Authorization', 'OAuth 12345qwerty'], 'headers';
+    
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF8'],
+                encode_json([
+                    +{
+                        code    => 200,
+                        headers => [],
+                        body    => encode_json($data_ref->[0]),
+                    },
+                    +{
+                        code    => 200,
+                        headers => [],
+                        body    => encode_json($data_ref->[1]),
+                    }
+                ]),
+            );
 
-    } receive_request {
+        },
+    );
 
-        my %args = @_;
-        is $args{url}, 'https://graph.facebook.com/', 'end point';
-        is $args{method}, 'POST', 'method';
-        is_deeply $args{headers}, ['Authorization', 'OAuth 12345qwerty'], 'headers';
+    my $fb = Facebook::OpenGraph->new(+{
+        app_id       => 1234556,
+        secret       => 'secret',
+        access_token => '12345qwerty',
+    });
+    my $res = $fb->create_test_users([
+        +{
+            permissions => [qw/publish_actions/],
+            locale      => 'en_US',
+            installed   => 'true',
+        },
+        +{
+            permissions => [qw/publish_actions email read_stream/],
+            locale      => 'ja_JP', 
+            installed   => 'true',
+        },
+    ]);
+    is_deeply $res, $data_ref, 'data';
 
-        return +{
-            headers => [],
-            status  => 200,
-            message => 'OK',
-            content => encode_json([
-                +{
-                    code    => 200,
-                    headers => [],
-                    body    => encode_json($data_ref->[0]),
-                },
-                +{
-                    code    => 200,
-                    headers => [],
-                    body    => encode_json($data_ref->[1]),
-                }
-            ]),
-        };
-
-    }
 };
 
 done_testing;

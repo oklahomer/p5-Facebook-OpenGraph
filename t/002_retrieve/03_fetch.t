@@ -2,9 +2,9 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Exception;
+use Test::Mock::Furl;
 use Facebook::OpenGraph;
-use URI;
-use t::Util;
+use JSON 2 qw(encode_json);
 
 subtest 'user' => sub {
 
@@ -19,36 +19,35 @@ subtest 'user' => sub {
         link       => 'http://www.facebook.com/zuck',
     };
 
-    send_request {
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
+            is_deeply(
+                \%args,
+                +{
+                    headers => [],
+                    url     => 'https://graph.facebook.com/zuck',
+                    content => '',
+                    method  => 'GET',
+                },
+                'args'
+            );
+            
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json($datum_ref),
+            );
+        },
+    );
 
-        my $fb = Facebook::OpenGraph->new;
-        my $user = $fb->fetch('zuck');
+    my $fb = Facebook::OpenGraph->new;
+    my $user = $fb->fetch('zuck');
 
-        is_deeply $datum_ref, $user, 'datum';
+    is_deeply $datum_ref, $user, 'datum';
 
-    } receive_request {
-
-        my %args = @_;
-        
-        is_deeply(
-            \%args,
-            +{
-                headers => [],
-                url     => 'https://graph.facebook.com/zuck',
-                content => '',
-                method  => 'GET',
-            },
-            'args'
-        );
-        
-        return +{
-            headers => [],
-            status  => 200,
-            message => 'OK',
-            content => $datum_ref,
-        };
-
-    };
 };
 
 subtest 'with fields' => sub {
@@ -62,67 +61,70 @@ subtest 'with fields' => sub {
             },
         },
     };
+    
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
 
-    send_request {
+            is_deeply(
+                \%args,
+                +{
+                    headers => [],
+                    url     => 'https://graph.facebook.com/zuck?fields=picture',
+                    content => '',
+                    method  => 'GET',
+                },
+                'args'
+            );
+    
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json($datum_ref),
+            );
+        },
+    );
+        
+    my $fb   = Facebook::OpenGraph->new;
+    my $user = $fb->fetch('zuck', +{fields => 'picture'});
 
-        my $fb   = Facebook::OpenGraph->new;
-        my $user = $fb->fetch('zuck', +{fields => 'picture'});
+    is_deeply $datum_ref, $user, 'datum';
 
-        is_deeply $datum_ref, $user, 'datum';
-
-    } receive_request {
-
-        my %args = @_;
-
-        is_deeply(
-            \%args,
-            +{
-                headers => [],
-                url     => 'https://graph.facebook.com/zuck?fields=picture',
-                content => '',
-                method  => 'GET',
-            },
-            'args'
-        );
-
-        return +{
-            headers => [],
-            status  => 200,
-            message => 'OK',
-            content => $datum_ref,
-        };
-
-    };
 };
 
 subtest 'not found' => sub {
 
-    send_request {
-        my $fb = Facebook::OpenGraph->new;
-        throws_ok(
-            sub {
-                my $user = $fb->fetch('hhhhhhhhhhsssssssss');
-            },
-            qr/803:- OAuthException:\(#803\) Some of the aliases you requested do not exist: hhhhhhhhhhsssssssss/,
-            'user not found',
-        );
-    } receive_request {
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
+            return (
+                1,
+                404,
+                'Not Found',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json(+{
+                    error => +{
+                        code    => 803,
+                        type    => 'OAuthException',
+                        message => '(#803) Some of the aliases you requested do not exist: hhhhhhhhhhsssssssss',
+                        error_subcode => '',
+                    },
+                }),
+            );
 
-        return +{
-            headers => [],
-            status  => 404,
-            message => 'Not Found',
-            content => +{
-                error => +{
-                    code    => 803,
-                    type    => 'OAuthException',
-                    message => '(#803) Some of the aliases you requested do not exist: hhhhhhhhhhsssssssss',
-                    error_subcode => '',
-                },
-            },
-        };
-
-    };
+        },
+    );
+        
+    my $fb = Facebook::OpenGraph->new;
+    throws_ok(
+        sub {
+            my $user = $fb->fetch('hhhhhhhhhhsssssssss');
+        },
+        qr/803:- OAuthException:\(#803\) Some of the aliases you requested do not exist: hhhhhhhhhhsssssssss/,
+        'user not found',
+    );
 
 };
 

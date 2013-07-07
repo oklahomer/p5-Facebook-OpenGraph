@@ -1,10 +1,9 @@
 use strict;
 use warnings;
 use Test::More;
-use Facebook::OpenGraph;
-use URI;
+use Test::Mock::Furl;
 use JSON 2 qw(encode_json decode_json);
-use t::Util;
+use Facebook::OpenGraph;
 
 subtest 'user' => sub {
 
@@ -30,76 +29,81 @@ subtest 'user' => sub {
         gender     => 'male'
     };
 
-    send_request {
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
 
-        my $fb = Facebook::OpenGraph->new(+{
-            app_id       => 123456789,
-            secret       => 'foobarbuzz',
-            access_token => 'dfasdfasdfasdfa',
-        });
-        my $data_ref = $fb->bulk_fetch([qw(4 go.hagiwara)]);
-        
-        is_deeply $data_ref, [$zuck, $hagiwara], 'data';
+            is_deeply(
+                decode_json(delete $args{content}->{batch}),
+                [
+                    +{
+                        relative_url => 4,
+                        method       => 'GET',
+                    },
+                    +{
+                        relative_url => 'go.hagiwara',
+                        method       => 'GET',
+                    },
+                ],
+                'batch'
+            );
 
-    } receive_request {
-
-        my %args = @_;
-        is_deeply(
-            decode_json(delete $args{content}->{batch}),
-            [
+            is_deeply(
+                \%args,
                 +{
-                    relative_url => 4,
-                    method       => 'GET',
+                    headers => ['Authorization', 'OAuth dfasdfasdfasdfa'],
+                    url     => 'https://graph.facebook.com/',
+                    method  => 'POST',
+                    content => +{
+                        access_token => 'dfasdfasdfasdfa',
+                    }
                 },
-                +{
-                    relative_url => 'go.hagiwara',
-                    method       => 'GET',
-                },
-            ],
-            'batch'
-        );
-        is_deeply(
-            \%args,
-            +{
-                headers => ['Authorization', 'OAuth dfasdfasdfasdfa'],
-                url     => 'https://graph.facebook.com/',
-                method  => 'POST',
-                content => +{
-                    access_token => 'dfasdfasdfasdfa',
-                }
-            },
-            'args'
-        );
+                'args'
+            );
 
-        return +{
-            headers => [],
-            status  => 200,
-            message => 'OK',
-            content => [
-                +{
-                    code    => 200,
-                    headers => [
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json(
+                    [
                         +{
-                            name  => "Content-Type", 
-                            value => "text/javascript; charset=UTF-8",
+                            code    => 200,
+                            headers => [
+                                +{
+                                    name  => "Content-Type", 
+                                    value => "text/javascript; charset=UTF-8",
+                                },
+                            ],
+                            body => encode_json($zuck),
                         },
-                    ],
-                    body => encode_json($zuck),
-                },
-                +{
-                    code    => 200,
-                    headers => [
                         +{
-                            name  => "Content-Type", 
-                            value => "text/javascript; charset=UTF-8",
-                        },
+                            code    => 200,
+                            headers => [
+                                +{
+                                    name  => "Content-Type", 
+                                    value => "text/javascript; charset=UTF-8",
+                                },
+                            ],
+                            body => encode_json($hagiwara),
+                        }
                     ],
-                    body => encode_json($hagiwara),
-                }
-            ],
-        };
+                )
+            );
 
-    };
+        },
+    );
+
+    my $fb = Facebook::OpenGraph->new(+{
+        app_id       => 123456789,
+        secret       => 'foobarbuzz',
+        access_token => 'dfasdfasdfasdfa',
+    });
+    my $data_ref = $fb->bulk_fetch([qw(4 go.hagiwara)]);
+    
+    is_deeply $data_ref, [$zuck, $hagiwara], 'data';
+
 };
 
 done_testing;

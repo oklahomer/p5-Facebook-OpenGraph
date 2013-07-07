@@ -2,113 +2,112 @@ use strict;
 use warnings;
 use Test::More;
 use Test::Exception;
+use Test::Mock::Furl;
+use JSON 2 qw/encode_json/;
 use Facebook::OpenGraph;
-use t::Util;
-use URI;
 
 subtest 'w/o use_post_method setting' => sub {
 
-    send_request {
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
 
-        my $fb = Facebook::OpenGraph->new;
-        $fb->get('go.hagiwara');
+            is $args{method}, 'GET', 'HTTP method';
+            is $args{content}, '', 'content';
+    
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json(+{
+                    dummy => 'data',
+                }),
+            );
+        },
+    );
 
-    } receive_request {
-
-        my %args = @_;
-        is $args{method}, 'GET', 'HTTP method';
-        is $args{content}, '', 'content';
-
-        return +{
-            headers => [], 
-            status  => 200,
-            message => 'OK',
-            content => +{
-                dummy => 'data',
-            }
-        };
-
-    };
+    my $fb = Facebook::OpenGraph->new;
+    $fb->get('go.hagiwara');
 
 };
 
 subtest 'use_post_method setting w/ GET' => sub {
 
-    send_request {
-
-        my $fb = Facebook::OpenGraph->new(+{
-            access_token    => 'qwerty',
-            use_post_method => 1,
-        });
-        $fb->get('/me');
-
-    } receive_request {
-
-        my %args = @_;
-        is_deeply(
-            \%args,
-            +{
-                method => 'POST',
-                url    => 'https://graph.facebook.com/me',
-                headers => [
-                    Authorization => 'OAuth qwerty',
-                ],
-                content => +{
-                    method => 'GET',
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
+            
+            is_deeply(
+                \%args,
+                +{
+                    method => 'POST',
+                    url    => 'https://graph.facebook.com/me',
+                    headers => [
+                        Authorization => 'OAuth qwerty',
+                    ],
+                    content => +{
+                        method => 'GET',
+                    },
                 },
-            },
-        );
+            );
+    
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json(+{
+                    dummy => 'data',
+                }),
+            );
+        },
+    );
 
-        return +{
-            headers => [], 
-            status  => 200,
-            message => 'OK',
-            content => +{
-                dummy => 'data',
-            }
-        };
-
-    };
+    my $fb = Facebook::OpenGraph->new(+{
+        access_token    => 'qwerty',
+        use_post_method => 1,
+    });
+    $fb->get('/me');
 
 };
 
 subtest 'use_post_method setting w/ DELETE' => sub {
 
-    send_request {
-
-        my $fb = Facebook::OpenGraph->new(+{
-            access_token    => 'qwerty',
-            use_post_method => 1,
-        });
-        $fb->delete(123456);
-
-    } receive_request {
-
-        my %args = @_;
-        is_deeply(
-            \%args,
-            +{
-                method => 'POST',
-                url    => 'https://graph.facebook.com/123456',
-                headers => [
-                    Authorization => 'OAuth qwerty',
-                ],
-                content => +{
-                    method => 'DELETE',
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
+        
+            is_deeply(
+                \%args,
+                +{
+                    method => 'POST',
+                    url    => 'https://graph.facebook.com/123456',
+                    headers => [
+                        Authorization => 'OAuth qwerty',
+                    ],
+                    content => +{
+                        method => 'DELETE',
+                    },
                 },
-            },
-        );
+            );
+    
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json(+{dummy => 'data'}),
+            );
 
-        return +{
-            headers => [], 
-            status  => 200,
-            message => 'OK',
-            content => +{
-                dummy => 'data',
-            }
-        };
+        },
+    );
 
-    };
+    my $fb = Facebook::OpenGraph->new(+{
+        access_token    => 'qwerty',
+        use_post_method => 1,
+    });
+    $fb->delete(123456);
 
 };
 

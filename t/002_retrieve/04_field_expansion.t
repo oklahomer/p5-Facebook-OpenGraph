@@ -1,10 +1,9 @@
 use strict;
 use warnings;
 use Test::More;
-use Facebook::OpenGraph;
-use URI;
-use t::Util;
+use Test::Mock::Furl;
 use JSON 2 qw(encode_json);
+use Facebook::OpenGraph;
 eval "use YAML qw(LoadFile)";
 plan skip_all => "YAML is not installed." if $@;
     
@@ -77,65 +76,67 @@ subtest 'field expansion' => sub {
             ],
         }
     };
+
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
+
+            delete $args{url}; # tested in t/001_basic/07_field_expansion.t
+
+            is_deeply(
+                \%args,
+                +{
+                    headers => ['Authorization' => 'OAuth qwerty'],
+                    content => '',
+                    method  => 'GET',
+                },
+                'args'
+            );
     
-    send_request {
-
-        my $fb = Facebook::OpenGraph->new(+{
-            access_token => 'qwerty',
-        });
-        my $fields = LoadFile('t/resource/fields.yaml');
-        my $user   = $fb->fetch('me',  +{fields => $fields});
-
-        is_deeply $user, $val, 'user';
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json($val),
+            );
+        },
+    );
     
-    } receive_request {
-        my %args = @_;
+    my $fb = Facebook::OpenGraph->new(+{
+        access_token => 'qwerty',
+    });
+    my $fields = LoadFile('t/resource/fields.yaml');
+    my $user   = $fb->fetch('me',  +{fields => $fields});
 
-        delete $args{url}; # tested in t/001_basic/07_field_expansion.t
-        is_deeply(
-            \%args,
-            +{
-                headers => ['Authorization' => 'OAuth qwerty'],
-                content => '',
-                method  => 'GET',
-            },
-            'args'
-        );
+    is_deeply $user, $val, 'user';
 
-        return +{
-            status  => 200,
-            headers => [],
-            message => 'OK',
-            content => $val,
-        };
-
-    };
 };
 
 subtest 'w/ other params' => sub {
 
-    send_request {
+    $Mock_furl_http->mock(
+        request => sub {
+            my ($mock, %args) = @_;
+            my $uri   = $args{url};
+            my %query = $uri->query_form;
+            is $query{locale}, 'ja_JP', 'locale';
+            ok $query{fields}, 'fields';
+    
+            return (
+                1,
+                200,
+                'OK',
+                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                encode_json({data => 'dummy'}),
+            );
+        },
+    );
 
-        my $fb     = Facebook::OpenGraph->new;
-        my $fields = LoadFile('t/resource/fields.yaml');
-        my $user   = $fb->fetch('/me', +{fields => $fields, locale => 'ja_JP'});
+    my $fb     = Facebook::OpenGraph->new;
+    my $fields = LoadFile('t/resource/fields.yaml');
+    my $user   = $fb->fetch('/me', +{fields => $fields, locale => 'ja_JP'});
 
-    } receive_request {
-
-        my %args  = @_;
-        my $uri   = $args{url};
-        my %query = $uri->query_form;
-        is $query{locale}, 'ja_JP', 'locale';
-        ok $query{fields}, 'fields';
-
-        return +{
-            status  => 200,
-            headers => [],
-            message => 'OK',
-            content => encode_json({data => 'dummy'}),
-        }
-
-    };
 };
 
 done_testing;
