@@ -1,5 +1,9 @@
 Revision history for Perl extension Facebook::OpenGraph
 
+1.10    Sun Jul 07 21:00:00 2013
+        - Add publish_staging_resource() to support Object API's staging functionality
+        - Use Test::Mock::Furl instead of t::Utils
+
 1.00    Sun Jun 02 22:00:00 2013
         - Add use_post_method option
           It enables you to send POST request for every API call with 

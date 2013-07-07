@@ -14,6 +14,7 @@ author_tests 'xt';
 
 test_requires 'Test::More';
 test_requires 'Test::Exception';
+test_requires 'Test::Mock::Furl';
 auto_set_repository;
 auto_include;
 WriteAll;

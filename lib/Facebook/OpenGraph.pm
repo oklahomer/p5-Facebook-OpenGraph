@@ -378,6 +378,22 @@ sub request {
                 } $req_header->header_field_names
             ];
         }
+        elsif ($param_ref->{file}) {
+            # post image file to Facebook's staging server
+            # https://developers.facebook.com/docs/opengraph/using-object-api/#images
+            # The document does NOT provide what Content-Type we should set, but
+            # it works without specifying it. I hate when it happens...
+            push @$headers, (Content_Type => 'form-data');
+            my $req = POST $uri, @$headers, Content => [%$param_ref];
+            $content = $req->content;
+            my $req_header = $req->headers;
+            $headers = +[
+                map {
+                    my $k = $_;
+                    map { ( $k => $_ ) } $req_header->header($_);
+                } $req_header->header_field_names
+            ];
+        }
         else {
             # post simple params such as message, link, description, etc...
             $content = $param_ref;
@@ -437,10 +453,13 @@ sub prep_param {
         $param_ref->{permissions} = ref $perms ? join ',', @$perms : $perms;
     }
 
-    # Source parameter contains file path.
+    # Source and file parameter contains file path.
     # It must be an array ref to work w/ HTTP::Request::Common.
     if (my $path = $param_ref->{source}) {
         $param_ref->{source} = ref $path ? $path : [$path];
+    }
+    if (my $path = $param_ref->{file}) {
+        $param_ref->{file} = ref $path ? $path : [$path];
     }
 
     # use Field Expansion
@@ -489,6 +508,14 @@ sub publish_action {
     my $action = shift;
     croak 'namespace is not set' unless $self->namespace;
     return $self->post(sprintf('/me/%s:%s', $self->namespace, $action), @_);
+}
+
+# Using the Object API: Images with the Object API
+# https://developers.facebook.com/docs/opengraph/using-object-api/#images
+sub publish_staging_resource {
+    my $self = shift;
+    my $file = shift;
+    return $self->post('/me/staging_resources', +{file => $file}, @_);
 }
 
 # Test Users: Creating
@@ -1028,7 +1055,7 @@ don't usually use this method directly.
 
 =head3 C<< $fb->publish_action($action_type, \%param) >>
 
-Alias to C<request()> that optimizes body content and endpoint to sends C<POST> 
+Alias to C<request()> that optimizes body content and endpoint to send C<POST> 
 request to publish Open Graph Action.
 
   my $res = $fb->publish_action('give', +{crap => 'https://sample.com/poop/'});
@@ -1066,6 +1093,18 @@ request to publish Open Graph Action.
   #];
 
 Alias to C<request()> that optimizes to create test users for your application.
+
+=head3 C<< $fb->publish_staging_resource($file_path) >>
+
+Alias to C<request()> that optimizes body content to send C<POST> request to upload image to Object API's staging environment.
+  
+  my $fb = Facebook::OpenGraph->new(+{
+      access_token => $USER_ACCESS_TOKEN,
+  });
+  my $res = $fb->publish_staging_resource('/path/to/file');
+  #{
+  #  uri => 'fbstaging://graph.facebook.com/staging_resources/MDExMzc3MDU0MDg1ODQ3OTY2OjE5MDU4NTM1MzQ=',
+  #};
 
 =head3 C<< $fb->check_object($object_id_or_url) >>
 
