@@ -14,8 +14,8 @@ sub new {
         code        => $args->{code},
         message     => $args->{message},
         content     => $args->{content},
-        req_headers => $args->{req_headers} || '',
-        req_content => $args->{req_content} || '',
+        req_headers => $args->{req_headers} || q{},
+        req_content => $args->{req_content} || q{},
     }, $class;
 }
 
@@ -39,19 +39,19 @@ sub error_string {
     my $self = shift;
     my $error = eval { $self->as_hashref->{error}; };
 
-    my $err_str = '';
+    my $err_str = q{};
     if ($@ || !$error) {
         $err_str = $self->message;
     }
     else {
         # sometimes error_subcode is not given
         $err_str = sprintf(
-            '%s:%s %s:%s',
-            $error->{code},
-            $error->{error_subcode} || '-',
-            $error->{type},
-            $error->{message},
-        );
+                        '%s:%s %s:%s',
+                        $error->{code},
+                        $error->{error_subcode} || '-',
+                        $error->{type},
+                        $error->{message},
+                   );
     }
 
     return $err_str;
@@ -59,14 +59,17 @@ sub error_string {
 
 sub as_json {
     my $self = shift;
-    if ((my $bool = $self->content) =~ m/^(true|false)$/) {
+
+    my $content = $self->content;
+    if ($content =~ m{\A (true|false) \z}xms) {
         # Sometimes they return plain text saying 'true' or 'false' to indicate
         # result. So make it JSON formatted for our convinience. The key is
         # named "success" so its format matches w/ some other endpoints that
         # return {"success": "(true|false)"}.
-        $self->{content} = sprintf('{"success" : "%s"}', $bool);
+        $content = sprintf('{"success" : "%s"}', $1);
     };
-    return $self->content; # content is JSON formatted
+
+    return $content; # content is JSON formatted
 }
 
 sub as_hashref {

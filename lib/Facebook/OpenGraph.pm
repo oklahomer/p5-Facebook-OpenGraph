@@ -12,7 +12,7 @@ use Digest::SHA qw(hmac_sha256 hmac_sha256_hex);
 use MIME::Base64::URLSafe qw(urlsafe_b64decode);
 use Scalar::Util qw(blessed);
 
-our $VERSION = '1.10';
+our $VERSION = '1.11';
 
 sub new {
     my $class = shift;
@@ -82,7 +82,10 @@ sub site_uri {
 sub _uri {
     my ($self, $base, $path, $param_ref) = @_;
     my $uri = URI->new_abs($path || '/', $base);
-    $uri->query_form($param_ref || +{});
+    $uri->query_form(+{
+        $uri->query_form,     # when given $path is like /foo?bar=bazz
+        %{$param_ref || +{}}, # additional query parameter
+    });
 
     return $uri;
 }
@@ -92,9 +95,9 @@ sub _uri {
 sub parse_signed_request {
     my ($self, $signed_request) = @_;
     croak 'signed_request is not given' unless $signed_request;
-    croak 'secret key must be set' unless $self->secret;
+    croak 'secret key must be set'      unless $self->secret;
 
-    my ($enc_sig, $payload) = split(/\./, $signed_request);
+    my ($enc_sig, $payload) = split(m{ \. }xms, $signed_request);
     my $sig = urlsafe_b64decode($enc_sig);
     my $val = $self->json->decode(urlsafe_b64decode($payload));
 
@@ -117,7 +120,7 @@ sub auth_uri {
 
     if (my $scope_ref = ref $param_ref->{scope}) {
         $param_ref->{scope} 
-            = $scope_ref eq 'ARRAY' ? join ',', @{$param_ref->{scope}}
+            = $scope_ref eq 'ARRAY' ? join q{,}, @{$param_ref->{scope}}
             :                         croak 'scope must be string or array ref'
             ;
     }
@@ -139,8 +142,7 @@ sub get_app_token {
     my $self = shift;
 
     croak 'app_id and secret must be set' unless $self->app_id && $self->secret;
-    my $token_ref = $self->_get_token(+{grant_type => 'client_credentials'});
-    return $token_ref;
+    return $self->_get_token(+{grant_type => 'client_credentials'});
 }
 
 # The Login Flow for Web (without JavaScript SDK): Exchanging code for an access token
@@ -148,7 +150,7 @@ sub get_app_token {
 sub get_user_token_by_code {
     my ($self, $code) = @_;
 
-    croak 'code is not given' unless $code;
+    croak 'code is not given'        unless $code;
     croak 'redirect_uri must be set' unless $self->redirect_uri;
 
     my $query_ref = +{
@@ -175,7 +177,7 @@ sub _get_token {
     # content should be 'access_token=12345|QwerTy&expires=5183951' formatted
     my $res_content = $response->content;
     my $token_ref = +{URI->new('?'.$res_content)->query_form};
-    croak 'can\'t get access_token properly: '.$res_content
+    croak qq{can't get access_token properly: $res_content}
         unless $token_ref->{access_token};
 
     return $token_ref;
@@ -189,6 +191,13 @@ sub post {
     return shift->request('POST', @_)->as_hashref;
 }
 
+# Deleting: Objects
+# https://developers.facebook.com/docs/reference/api/deleting/
+sub delete {
+    return shift->request('DELETE', @_)->as_hashref;
+}
+
+# For those who got used to Facebook::Graph
 *fetch   = \&get;
 *publish = \&post;
 
@@ -209,7 +218,10 @@ sub bulk_fetch {
     my ($self, $paths_ref) = @_;
 
     my @queries = map {
-        +{ method => 'GET', relative_url => $_ }
+        +{
+            method       => 'GET',
+            relative_url => $_,
+        }
     } @$paths_ref;
 
     return $self->batch(\@queries);
@@ -227,9 +239,11 @@ sub batch {
     my @data = ();
     for my $r (@$responses_ref) {
         for my $res_ref (@$r) {
+
             my @headers = map {
                 $_->{name} => $_->{value}
             } @{$res_ref->{headers}};
+
             my $response = $self->create_response(
                 $res_ref->{code},
                 $res_ref->{message},
@@ -237,6 +251,7 @@ sub batch {
                 $res_ref->{body},
             );
             croak $response->error_string unless $response->is_success;
+
             push @data, $response->as_hashref;
         }
     }
@@ -257,6 +272,7 @@ sub batch_fast {
     # "We currently limit the number of requests which can be in a batch to 50"
     my @responses = ();
     while(my @queries = splice @$batch, 0, $self->batch_limit) {
+
         for my $q (@queries) {
             if ($q->{method} eq 'POST' && $q->{body}) {
                 my $body_ref = $self->prep_param($q->{body});
@@ -265,14 +281,18 @@ sub batch_fast {
                 $q->{body} = $uri->query;
             }
         }
-        push @responses, $self->post(
-            '',
+
+        my @req = (
+            '/',
             +{
                 access_token => $self->access_token,
                 batch        => $self->json->encode(\@queries),
             },
             @_,
         );
+
+        push @responses, $self->post(@req);
+
     }
 
     return \@responses;
@@ -294,27 +314,6 @@ sub bulk_fql {
     return $self->fql($self->json->encode($batch), @_);
 }
 
-# Deleting: Objects
-# https://developers.facebook.com/docs/reference/api/deleting/
-sub delete {
-    my $self      = shift;
-    my $path      = shift;
-    my $param_ref = shift || +{};
-
-    # Try DELETE method as described in document.
-    my $response = $self->request('DELETE', $path, $param_ref, @_);
-    return $response->as_hashref if $response->is_success;
-
-    # Sometimes sending DELETE method failes,
-    # but POST method with method=delete works.
-    # Weird...
-    $param_ref = +{
-        %$param_ref,
-        method => 'delete',
-    };
-    return $self->post($path, $param_ref, @_);
-}
-
 sub request {
     my ($self, $method, $uri, $param_ref, $headers) = @_;
 
@@ -333,8 +332,7 @@ sub request {
     #  }
     # To enable this you have to visit App Setting > Advanced > Security and 
     # check "Require AppSecret Proof for Server API call"
-    if ($self->use_appsecret_proof && $self->access_token) {
-        croak 'app secret must be set' unless $self->secret;
+    if ($self->use_appsecret_proof) {
         $param_ref->{appsecret_proof} = $self->gen_appsecret_proof;
     }
 
@@ -346,44 +344,38 @@ sub request {
     # Check PHP SDK's base_facebook.php for detail.
     if ($self->{use_post_method}) {
         $param_ref->{method} = $method;
-        $method = 'POST';
+        $method              = 'POST';
     }
 
     $headers ||= [];
-    push @$headers, (Authorization => sprintf('OAuth %s', $self->access_token))
-        if $self->access_token;
+    # http://tools.ietf.org/html/draft-ietf-oauth-v2-10#section-5.1.1
+    if ($self->access_token) {
+        push @$headers, (
+                            'Authorization',
+                            sprintf('OAuth %s', $self->access_token),
+                        );
+    }
 
-    my $content = '';
+    my $content = q{};
     if ($method eq 'POST') {
+        if ($param_ref->{source} || $param_ref->{file}) {
+            # post image/video file
 
-        if ($param_ref->{source}) {
-            # post photo or video to /OBJECT_ID/(photos|videos)
-
+            # https://developers.facebook.com/docs/reference/api/video/
             # When posting a video, use graph-video.facebook.com .
-            # base_facebook.php has an equivalent method isVideoPost()
+            # base_facebook.php has an equivalent part in isVideoPost().
             # ($method == 'POST' && preg_match("/^(\/)(.+)(\/)(videos)$/", $path))
             # For other actions, use graph.facebook.com/VIDEO_ID/CONNECTION_TYPE
-            $uri->host($self->video_uri->host)
-                if $uri->path =~ /^\/.+\/videos$/;
-                #if $uri->path =~ /^\/[^\/]+\/videos$/;
+            if ($uri->path =~ m{\A /.+/videos \z}xms) {
+                $uri->host($self->video_uri->host);
+            }
 
+            # Content-Type should be multipart/form-data
+            # https://developers.facebook.com/docs/reference/api/publishing/
             push @$headers, (Content_Type => 'form-data');
-            my $req = POST $uri, @$headers, Content => [%$param_ref];
-            $content = $req->content;
-            my $req_header = $req->headers;
-            $headers = +[
-                map {
-                    my $k = $_;
-                    map { ( $k => $_ ) } $req_header->header($_);
-                } $req_header->header_field_names
-            ];
-        }
-        elsif ($param_ref->{file}) {
-            # post image file to Facebook's staging server
-            # https://developers.facebook.com/docs/opengraph/using-object-api/#images
-            # The document does NOT provide what Content-Type we should set, but
-            # it works without specifying it. I hate when it happens...
-            push @$headers, (Content_Type => 'form-data');
+
+            # Furl::HTTP document says we can use multipart/form-data w/
+            # HTTP::Request::Common.
             my $req = POST $uri, @$headers, Content => [%$param_ref];
             $content = $req->content;
             my $req_header = $req->headers;
@@ -395,7 +387,9 @@ sub request {
             ];
         }
         else {
-            # post simple params such as message, link, description, etc...
+            # Post simple params such as message, link, description, etc...
+            # Content-Type: application/x-www-form-urlencoded will be set in
+            # Furl::HTTP and $content will be treated properly.
             $content = $param_ref;
         }
     }
@@ -415,16 +409,20 @@ sub request {
         return $res;
     }
     else {
-        # Use later version of Furl::HTTP to utilize req_headers and req_content.
-        # This Should be helpful for debugging
+        # Use later version of Furl::HTTP to utilize req_headers and
+        # req_content. This Should be helpful when debugging.
         my $msg = $res->error_string;
-        $msg .= "\n" . $res->req_headers . $res->req_content  if  $res->req_headers;
+        if ($res->req_headers) {
+            $msg .= "\n" . $res->req_headers . $res->req_content;
+        }
         croak $msg;
     }
 }
 
 sub gen_appsecret_proof {
     my $self = shift;
+    croak 'app secret must be set'   unless $self->secret;
+    croak 'access_token must be set' unless $self->access_token;
     return hmac_sha256_hex($self->access_token, $self->secret);
 }
 
@@ -434,7 +432,7 @@ sub create_response {
         json => $self->json,
         map {
             $_ => shift
-        } qw/code message headers content req_headers req_content/
+        } qw/code message headers content req_headers req_content/,
     });
 }
 
@@ -445,12 +443,12 @@ sub prep_param {
 
     # /?ids=4,http://facebook-docs.oklahome.net
     if (my $ids = $param_ref->{ids}) {
-        $param_ref->{ids} = ref $ids ? join ',', @$ids : $ids;
+        $param_ref->{ids} = ref $ids ? join q{,}, @$ids : $ids;
     }
 
     # mostly for /APP_ID/accounts/test-users
     if (my $perms = $param_ref->{permissions}) {
-        $param_ref->{permissions} = ref $perms ? join ',', @$perms : $perms;
+        $param_ref->{permissions} = ref $perms ? join q{,}, @$perms : $perms;
     }
 
     # Source and file parameter contains file path.
@@ -487,7 +485,7 @@ sub prep_fields_recursive {
         return $val;
     }
     elsif ($ref eq 'ARRAY') {
-        return join ',', map { $self->prep_fields_recursive($_) } @$val;
+        return join q{,}, map { $self->prep_fields_recursive($_) } @$val;
     }
     elsif ($ref eq 'HASH') {
         my @strs = ();
@@ -497,7 +495,7 @@ sub prep_fields_recursive {
             my $pattern = $r && $r eq 'HASH' ? '%s.%s' : '%s(%s)';
             push @strs, sprintf($pattern, $k, $self->prep_fields_recursive($v));
         }
-        return join '.', @strs;
+        return join q{.}, @strs;
     }
 }
 
@@ -524,15 +522,18 @@ sub create_test_users {
     my $self         = shift;
     my $settings_ref = shift;
 
-    $settings_ref = [$settings_ref] unless ref $settings_ref eq 'ARRAY';
+    if (ref $settings_ref ne 'ARRAY') {
+        $settings_ref = [$settings_ref];
+    }
 
     my @settings = ();
+    my $relative_url = sprintf('/%s/accounts/test-users', $self->app_id);
     for my $setting (@$settings_ref) {
         push @settings, +{
-            method       => 'POST',
-            relative_url => sprintf('/%s/accounts/test-users', $self->app_id),
-            body         => $setting,
-        };
+                            method       => 'POST',
+                            relative_url => $relative_url,
+                            body         => $setting,
+                        };
     }
 
     return $self->batch(\@settings);
@@ -546,7 +547,7 @@ sub check_object {
         id     => $target, # $target is object url or open graph object id
         scrape => 'true',
     };
-    return $self->post('', $param_ref);
+    return $self->post(q{}, $param_ref);
 }
 
 1;
@@ -558,7 +559,7 @@ Facebook::OpenGraph - Simple way to handle Facebook's Graph API.
 
 =head1 VERSION
 
-This is Facebook::OpenGraph version 1.10
+This is Facebook::OpenGraph version 1.11
 
 =head1 SYNOPSIS
     
