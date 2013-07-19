@@ -15,7 +15,7 @@ subtest 'good'  => sub {
         application => +{
             url  => 'http://www.facebook.com/apps/application.php?id=115109575169727',
             name => 'IMDb',
-            id   => 115109575169727,
+            id   => '115109575169727',
         },
         description => "Directed by Michael Bay. With Sean Connery, Nicolas Cage, Ed Harris, John Spencer. A renegade general and his group of U.S. Marines take over Alcatraz and threaten San Francisco Bay with biological weapons. A chemical weapons specialist and the only man to have ever escaped from the Rock attempt to \x{2026}",
         image => [
@@ -117,7 +117,7 @@ subtest 'bad domain' => sub {
     my $target = 'https://developers.facebook.com/tools/debug/examples/bad_domain';
 
     my $val = +{
-        id           => 10150096126766188,
+        id           => '10150096126766188',
         url          => "http://www.iana.org/domains/example/",
         type         => "website",
         title        => "IANA - Example domains",
@@ -222,7 +222,7 @@ subtest 'missing property' => sub {
         url   => 'https://developers.facebook.com/tools/debug/examples/missing_property',
         type  => 'book',
         title => 'https://developers.facebook.com/tools/debug/examples/missing_property',
-        id    => 10150426817266040,
+        id    => '10150426817266040',
         updated_time => '2012-11-24T15:47:23+000',
     };
 
@@ -269,7 +269,7 @@ subtest 'invalid property' => sub {
     my $val = +{
         updated_time => '2012-11-24T15:54:27+0000',
         url          => 'htps://developers.facebook.com/tools/debug/examples/invalid_property',
-        id           => 10150748655040220,
+        id           => '10150748655040220',
         data         => +{
             isbn => 'Paul isn\'t an ISBN',
         },

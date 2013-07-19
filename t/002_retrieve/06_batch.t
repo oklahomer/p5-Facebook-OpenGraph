@@ -40,7 +40,7 @@ subtest 'w/ valid token' => sub {
         cover => {
             source => 'http://sphotos-g.ak.fbcdn.net/hphotos-ak-snc6/s720x720/283711_500726406609334_431792850_n.jpg',
             offset_y => 57,
-            cover_id => 500726406609334,
+            cover_id => '500726406609334',
         },
         is_published => 'true',
         category => 'Reference website',

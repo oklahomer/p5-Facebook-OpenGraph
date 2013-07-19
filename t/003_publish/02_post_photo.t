@@ -32,7 +32,7 @@ subtest 'post photo' => sub {
                 ['Content-Type' => 'text/javascript; charset=UTF-8'],
                 encode_json(+{
                     post_id => 100004886761157_100537230119169, # user_id + post id combo
-                    id      => 100550186784540,
+                    id      => '100550186784540',
                 }),
             );
         },
@@ -43,7 +43,7 @@ subtest 'post photo' => sub {
         access_token => '12345qwerty',
     });
     my $response = $fb->publish('/me/photos',+{ source => './t/resource/sample.png', message => 'upload photo'});
-    is $response->{id}, 100550186784540, 'id';
+    is $response->{id}, '100550186784540', 'id';
     is $response->{post_id}, 100004886761157_100537230119169, 'post_id';
 
 };

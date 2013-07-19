@@ -18,7 +18,7 @@ subtest 'field expansion' => sub {
                 +{
                     created_time  => '2012-11-20T10:35:36+0000',
                     name          => 'test album',
-                    id            => 111111111111111,
+                    id            => '111111111111111',
                     photos        => +{
                         data => [
                             +{
