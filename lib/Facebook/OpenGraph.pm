@@ -12,7 +12,7 @@ use Digest::SHA qw(hmac_sha256 hmac_sha256_hex);
 use MIME::Base64::URLSafe qw(urlsafe_b64decode);
 use Scalar::Util qw(blessed);
 
-our $VERSION = '1.11';
+our $VERSION = '1.12';
 
 sub new {
     my $class = shift;
@@ -90,8 +90,8 @@ sub _uri {
     return $uri;
 }
 
-# Using Login with Games on Facebook: Parsing the Signed Request
-# https://developers.facebook.com/docs/facebook-login/using-login-with-games/#parsingsr
+# Login for Games on Facebook > Checking Login Status > Parsing the Signed Request
+# https://developers.facebook.com/docs/facebook-login/using-login-with-games
 sub parse_signed_request {
     my ($self, $signed_request) = @_;
     croak 'signed_request is not given' unless $signed_request;
@@ -110,8 +110,8 @@ sub parse_signed_request {
     return $val;
 }
 
-# OAuth Dialog: Constructing a URL to the OAuth dialog
-# https://developers.facebook.com/docs/reference/dialogs/oauth/
+# Manually Build a Login Flow > Logging people in > Invoking the login dialog
+# https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow/
 sub auth_uri {
     my ($self, $param_ref) = @_;
     $param_ref ||= +{};
@@ -136,7 +136,7 @@ sub set_access_token {
     $self->{access_token} = $token;
 }
 
-# Access Tokens: App Tokens
+# Access Tokens > App Tokens
 # https://developers.facebook.com/docs/facebook-login/access-tokens/#apptokens
 sub get_app_token {
     my $self = shift;
@@ -145,7 +145,7 @@ sub get_app_token {
     return $self->_get_token(+{grant_type => 'client_credentials'});
 }
 
-# The Login Flow for Web (without JavaScript SDK): Exchanging code for an access token
+# Manually Build a Login Flow > Confirming identity > Exchanging code for an access token
 # https://developers.facebook.com/docs/facebook-login/login-flow-for-web-no-jssdk/#exchangecode
 sub get_user_token_by_code {
     my ($self, $code) = @_;
@@ -191,7 +191,7 @@ sub post {
     return shift->request('POST', @_)->as_hashref;
 }
 
-# Deleting: Objects
+# Deleting > Objects
 # https://developers.facebook.com/docs/reference/api/deleting/
 sub delete {
     return shift->request('DELETE', @_)->as_hashref;
@@ -227,8 +227,8 @@ sub bulk_fetch {
     return $self->batch(\@queries);
 }
 
-# Batch Requests
-# https://developers.facebook.com/docs/reference/api/batch/
+# Making Multiple API Requests > Making a simple batched request
+# https://developers.facebook.com/docs/graph-api/making-multiple-requests
 sub batch {
     my $self  = shift;
 
@@ -298,7 +298,7 @@ sub batch_fast {
     return \@responses;
 }
 
-# Facebook Query Language (FQL)
+# Facebook Query Language (FQL) Overview
 # https://developers.facebook.com/docs/technical-guides/fql/
 sub fql {
     my $self  = shift;
@@ -306,7 +306,7 @@ sub fql {
     return $self->get('/fql', +{q => $query}, @_);
 }
 
-# Facebook Query Language (FQL): Multi-query
+# Facebook Query Language (FQL) Overview: Multi-query
 # https://developers.facebook.com/docs/technical-guides/fql/#multi
 sub bulk_fql {
     my $self  = shift;
@@ -382,7 +382,7 @@ sub request {
             $headers = +[
                 map {
                     my $k = $_;
-                    map { ( $k => $_ ) } $req_header->header($_);
+                    map { ( $k => $_ ) } $req_header->header($k);
                 } $req_header->header_field_names
             ];
         }
@@ -465,8 +465,8 @@ sub prep_param {
         $param_ref->{fields} = $self->prep_fields_recursive($field_ref);
     }
 
-    # Using the Object API
-    # https://developers.facebook.com/docs/opengraph/using-object-api/
+    # Using Objects: Using the Object API
+    # https://developers.facebook.com/docs/opengraph/using-objects/#objectapi
     my $object = $param_ref->{object};
     if ($object && ref $object eq 'HASH') {
         $param_ref->{object} = $self->json->encode($object);
@@ -475,8 +475,8 @@ sub prep_param {
     return $param_ref;
 }
 
-# Field Expansion
-# https://developers.facebook.com/docs/reference/api/field_expansion/
+# Using the Graph API: Reading > Making Nested Requests
+# https://developers.facebook.com/docs/graph-api/using-graph-api/
 sub prep_fields_recursive {
     my ($self, $val) = @_;
 
@@ -489,8 +489,7 @@ sub prep_fields_recursive {
     }
     elsif ($ref eq 'HASH') {
         my @strs = ();
-        for my $k (keys %$val) {
-            my $v = $val->{$k};
+        while (my ($k, $v) = each %$val) {
             my $r = ref $v;
             my $pattern = $r && $r eq 'HASH' ? '%s.%s' : '%s(%s)';
             push @strs, sprintf($pattern, $k, $self->prep_fields_recursive($v));
@@ -499,7 +498,7 @@ sub prep_fields_recursive {
     }
 }
 
-# Using Actions: Publishing Actions
+# Using Actions > Publishing Actions
 # https://developers.facebook.com/docs/opengraph/using-actions/#publish
 sub publish_action {
     my $self   = shift;
@@ -508,8 +507,8 @@ sub publish_action {
     return $self->post(sprintf('/me/%s:%s', $self->namespace, $action), @_);
 }
 
-# Using the Object API: Images with the Object API
-# https://developers.facebook.com/docs/opengraph/using-object-api/#images
+# Using Objects > Using the Object API > Images with the Object API
+# https://developers.facebook.com/docs/opengraph/using-objects/
 sub publish_staging_resource {
     my $self = shift;
     my $file = shift;
@@ -539,8 +538,8 @@ sub create_test_users {
     return $self->batch(\@settings);
 }
 
-# Using Self-Hosted Objects: Updating Objects 
-# https://developers.facebook.com/docs/opengraph/using-objects/#update
+# Using Objects > Using Self-Hosted Objects > Updating Objects
+# https://developers.facebook.com/docs/opengraph/using-objects/
 sub check_object {
     my ($self, $target) = @_;
     my $param_ref = +{
@@ -559,7 +558,7 @@ Facebook::OpenGraph - Simple way to handle Facebook's Graph API.
 
 =head1 VERSION
 
-This is Facebook::OpenGraph version 1.11
+This is Facebook::OpenGraph version 1.12
 
 =head1 SYNOPSIS
     
@@ -684,7 +683,7 @@ The maximum # of queries that can be set w/in a single batch request. If the #
 of given queries exceeds this, then queries are divided into multiple batch 
 requests and responses are combined so it seems just like a single request. 
 Default value is 50 as API documentation says. Official documentation is 
-located at L<https://developers.facebook.com/docs/reference/api/batch/>
+located at L<https://developers.facebook.com/docs/graph-api/making-multiple-requests/>
 
 =item * is_beta
 
@@ -956,7 +955,7 @@ C<GET> request.
   #    }],
   #}
 
-=head3 C<< $fb->bulk_fql(\@fql_queries) >>
+=head3 C<< $fb->bulk_fql(\%fql_queries) >>
 
 Alias to C<fql()> to request multiple FQL query at once.
 
@@ -1018,7 +1017,7 @@ directly.
 
 Handles fields parameter and format it in the way Graph API spec states. 
 The main purpose of this method is to deal w/ Field Expansion
-(L<https://developers.facebook.com/docs/reference/api/field_expansion/>). 
+(L<https://developers.facebook.com/docs/graph-api/using-graph-api/#fieldexpansion>). 
 This method is called in C<prep_param> which is called in C<request()> so you 
 don't usually use this method directly.
 
