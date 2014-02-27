@@ -59,7 +59,7 @@ subtest 'w/o secret key' => sub {
             my $token = $fb->get_app_token->{access_token};
         },
         qr/app_id and secret must be set /,
-        'secret key',
+        'secret key is not set',
     );
     
 };
@@ -75,7 +75,7 @@ subtest 'w/o secret key' => sub {
             my $token = $fb->get_app_token->{access_token};
         },
         qr/app_id and secret must be set /,
-        'secret key',
+        'app_id is not set',
     );
     
 };

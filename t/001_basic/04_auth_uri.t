@@ -83,12 +83,12 @@ subtest 'w/o redirect_uri' => sub {
             });
         },
         qr/redirect_uri and app_id must be set/,
-        'scopre value is hashref'
+        'redirect_uri is not set'
     );
 
 };
 
-subtest 'wrong scopre value' => sub {
+subtest 'wrong scope value' => sub {
 
     my $fb = Facebook::OpenGraph->new(+{
         app_id       => 1234567,
@@ -102,7 +102,7 @@ subtest 'wrong scopre value' => sub {
             });
         },
         qr/scope must be string or array ref/,
-        'scopre value is hashref'
+        'scope value is hashref'
     );
 
 };

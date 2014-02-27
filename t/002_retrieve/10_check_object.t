@@ -60,7 +60,7 @@ subtest 'good'  => sub {
     );
 
     my $fb = Facebook::OpenGraph->new;
-    my $response   = $fb->check_object($target);
+    my $response = $fb->check_object($target);
 
     is_deeply $response, $val, 'response';
 
@@ -123,7 +123,7 @@ subtest 'bad domain' => sub {
         title        => "IANA - Example domains",
         description  => "As described in RFC 2606, we maintain a number of domains such as EXAMPLE.COM and EXAMPLE.ORG for documentation purposes. These domains may be used as illustrative examples in documents without prior coordination with us. They are not available for registration.",
         updated_time => "2012-11-24T14:19:29+0000",
-        image => [
+        image        => [
             +{
                 url => "http://www.iana.org/_img/iana-logo-pageheader.png",
             }

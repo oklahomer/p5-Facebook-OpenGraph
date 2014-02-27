@@ -7,7 +7,8 @@ use JSON 2 qw(encode_json);
 
 subtest 'etag' => sub {
 
-    my $etag = '539feb8aee5c3d20a2ebacd02db380b27243b255';
+    # beware of double quotation mark
+    my $etag = '"539feb8aee5c3d20a2ebacd02db380b27243b255"';
 
     $Mock_furl_http->mock(
         request => sub {
@@ -28,7 +29,7 @@ subtest 'etag' => sub {
                 1,
                 304,
                 'Not Modified',
-                ['Content-Type' => 'text/javascript; charset=UTF-8'],
+                ['Content-Type' => 'text/javascript; charset=UTF-8'], # text/javascript
                 '',
             );
         },

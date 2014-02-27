@@ -28,20 +28,20 @@ subtest 'parse fields param' => sub {
         my $fields = LoadFile('t/resource/fields.yaml');
         my $fields_str = $fb->prep_fields_recursive($fields);
             
-        my $user_field_match = $fields_str =~ s/(^name,email,albums)//;
+        my $user_field_match = $fields_str =~ s/\A (name,email,albums) //x;
         is $user_field_match, 1, 'user fields';
     
-        my $albums_limit_match = $fields_str =~ s/(^\.limit\(5\)|\.limit\(5\)$)//;
+        my $albums_limit_match = $fields_str =~ s/(\A \.limit\(5\) | \.limit\(5\) \z)//x;
         is $albums_limit_match, 1, 'albums limit';
-        my $albums_fields_match = $fields_str =~ s/^\.fields\(name,photos(.*)\)$/$1/;
+        my $albums_fields_match = $fields_str =~ s/\A \.fields\(name,photos(.*)\) \z/$1/x;
         is $albums_fields_match, 1, 'albums fields';
     
-        my $photos_limit_match = $fields_str =~ s/(^\.limit\(3\)|\.limit\(3\)$)//;
+        my $photos_limit_match = $fields_str =~ s/(\A \.limit\(3\) | \.limit\(3\) \z)//x;
         is $photos_limit_match, 1, 'photos limit';
-        my $photos_fields_match = $fields_str =~ s/^\.fields\(name,picture,tags(.*)\)/$1/;
+        my $photos_fields_match = $fields_str =~ s/\A \.fields\(name,picture,tags(.*)\) /$1/x;
         is $photos_fields_match, 1, 'photos fields';
     
-        my $tags_limit_match = $fields_str =~ s/^\.limit\(2\)$//;
+        my $tags_limit_match = $fields_str =~ s/\A \.limit\(2\) \z//x;
         is $tags_limit_match, 1, 'tags limit';
     
         is $fields_str, '', 'all fields are done';
