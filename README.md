@@ -1,0 +1,580 @@
+# NAME
+
+Facebook::OpenGraph - Simple way to handle Facebook's Graph API.
+
+# VERSION
+
+This is Facebook::OpenGraph version 1.12
+
+# SYNOPSIS
+
+    use Facebook::OpenGraph;
+    
+    # fetching public information about given objects
+    my $fb = Facebook::OpenGraph->new;
+    my $user = $fb->fetch('zuck');
+    my $page = $fb->fetch('oklahomer.docs');
+    my $objs = $fb->bulk_fetch([qw/zuck oklahomer.docs/]);
+    
+    # get access_token for application
+    my $token_ref = Facebook::OpenGraph->new(+{
+        app_id => 12345,
+        secret => 'FooBarBuzz',
+    })->get_app_token;
+    
+    # user authorization
+    my $fb = Facebook::OpenGraph->new(+{
+        app_id       => 12345,
+        secret       => 'FooBarBuzz',
+        namespace    => 'my_app_namespace',
+        redirect_uri => 'https://sample.com/auth_callback',
+    });
+    my $auth_url = $fb->auth_uri(+{
+        scope => [qw/email publish_actions/],
+    });
+    $c->redirect($auth_url);
+    
+    my $req = Plack::Request->new($env);
+    my $token_ref = $fb->get_user_token_by_code($req->query_param('code'));
+    $fb->set_access_token($token_ref->{access_token});
+    
+    # publish photo
+    $fb->publish('/me/photos', +{
+        source  => '/path/to/pic.png',
+        message => 'Hello world!',
+    });
+    
+    # publish Open Graph Action
+    $fb->publish_action($action_type, +{$object_type => $object_url});
+
+# DESCRIPTION
+
+Facebook::OpenGraph is a Perl interface to handle Facebook's Graph API.
+This was inspired by [Facebook::Graph](https://metacpan.org/pod/Facebook::Graph), but this focuses on simplicity and 
+customizability because Facebook Platform modifies its API spec so frequently 
+and we have to be able to handle it in shorter period of time.
+
+This module does __NOT__ provide ways to set and validate parameters for each 
+API endpoint like Facebook::Graph does with Any::Moose. Instead it provides 
+some basic methods for HTTP request and various methods to handle Graph API's 
+functionality such as Batch Request, FQL including multi-query, Field 
+Expansion, ETag, wall posting w/ photo or video, creating Test Users, checking 
+and updating Open Graph Object or web page w/ OGP, publishing Open Graph 
+Action, deleting Open Graph Object and etc...
+
+You can specify endpoints and request parameters by yourself so it should be 
+easier to test the latest API spec.
+
+# METHODS
+
+## Class Methods
+
+### `Facebook::OpenGraph->new(\%args)`
+
+Creates and returns a new Facebook::OpenGraph object.
+
+_%args_ can contain...
+
+- app\_id
+
+    Facebook application ID. app\_id and secret are required to get application 
+    access token. Your app\_id should be obtained from 
+    [https://developers.facebook.com/apps/](https://developers.facebook.com/apps/).
+
+- secret
+
+    Facebook application secret. Should be obtained from 
+    [https://developers.facebook.com/apps/](https://developers.facebook.com/apps/).
+
+- ua
+
+    [Furl::HTTP](https://metacpan.org/pod/Furl::HTTP) object. Default is equivalent to 
+    Furl::HTTP->new(capture\_request => 1). You should install 2.10 or later version 
+    of Furl to enable capture\_request option. Or you can specify keep\_request 
+    option for same purpose if you have Furl 2.09. capture\_request option is 
+    recommended since it will give you the request headers and content when 
+    `request()` fails. 
+
+        my $fb = Facebook::OpenGraph->new;
+        $fb->post('/me/feed', +{message => 'Hello, world!'});
+        #2500:- OAuthException:An active access token must be used to query information about the current user.
+        #POST /me/feed HTTP/1.1
+        #Connection: keep-alive
+        #User-Agent: Furl::HTTP/2.15
+        #Content-Type: application/x-www-form-urlencoded
+        #Content-Length: 27
+        #Host: graph.facebook.com
+        #
+        #message=Hello%2C%20world%21
+
+- namespace
+
+    Facebook application namespace. This is used when you publish Open Graph Action 
+    via `publish_action()`.
+
+- access\_token
+
+    Access token for user, application or Facebook Page.
+
+- redirect\_uri
+
+    The URL to be used for authorization. Detail should be found at 
+    [https://developers.facebook.com/docs/reference/dialogs/oauth/](https://developers.facebook.com/docs/reference/dialogs/oauth/).
+
+- batch\_limit
+
+    The maximum # of queries that can be set w/in a single batch request. If the # 
+    of given queries exceeds this, then queries are divided into multiple batch 
+    requests and responses are combined so it seems just like a single request. 
+    Default value is 50 as API documentation says. Official documentation is 
+    located at [https://developers.facebook.com/docs/graph-api/making-multiple-requests/](https://developers.facebook.com/docs/graph-api/making-multiple-requests/)
+
+- is\_beta
+
+    Weather to use beta tier. See the official documentation for details. 
+    [https://developers.facebook.com/support/beta-tier/](https://developers.facebook.com/support/beta-tier/).
+
+- json
+
+    JSON object that handles requesting parameters and API response. Default is 
+    JSON->new->utf8.
+
+- use\_appsecret\_proof
+
+    Whether to use appsecret\_proof parameter or not. Default is 0.
+    Official document is not provided yet, but official PHP SDK support it so I 
+    implemented it anyway. Please refer to PHP SDK for detail. To enable this 
+    parameter you have to visit App Setting > Advanced > Security and check 
+    "Require AppSecret Proof for Server API call." 
+
+    my $fb = Facebook::OpenGraph->new(+{
+        app_id              => 123456,
+        secret              => 'FooBarBuzz',
+        ua                  => Furl::HTTP->new(capture_request => 1),
+        namespace           => 'fb-app-namespace', # for Open Graph Action
+        access_token        => '', # will be appended to request header in request()
+        redirect_uri        => 'https://sample.com/auth_callback', # for OAuth
+        batch_limit         => 50,
+        json                => JSON->new->utf8,
+        is_beta             => 1,
+        use_appsecret_proof => 1,
+    })
+
+## Instance Methods
+
+### `$fb->app_id`
+
+Accessor method that returns application id.
+
+### `$fb->secret`
+
+Accessor method that returns application secret.
+
+### `$fb->ua`
+
+Accessor method that returns [Furl::HTTP](https://metacpan.org/pod/Furl::HTTP) object.
+
+### `$fb->namespace`
+
+Accessor method that returns application namespace.
+
+### `$fb->access_token`
+
+Accessor method that returns access token.
+
+### `$fb->redirect_uri`
+
+Accessor method that returns URL that is used for user authorization.
+
+### `$fb->batch_limit`
+
+Accessor method that returns the maximum # of queries that can be set w/in a 
+single batch request. If the # of given queries exceeds this, then queries are 
+divided into multiple batch requests and responses are combined so it just 
+seems like a single batch request. Default value is 50 as API documentation says.
+
+### `$fb->is_beta`
+
+Accessor method that returns whether to use Beta tier or not.
+
+### `$fb->json`
+
+Accessor method that returns JSON object. This object will be passed to 
+Facebook::OpenGraph::Response via `create_response()`.
+
+### `$fb->use_appsecret_proof`
+
+Accessor method that returns whether to send appsecret\_proof parameter on API 
+call. Official document is not provided yet, but PHP SDK has this option and 
+you can activate this option from App Setting > Advanced > Security.
+
+### `$fb->use_post_method`
+
+Accessor method that returns whether to use POST method for every API call and 
+alternatively set method=(GET|POST|DELETE) query parameter. PHP SDK works this 
+way. This might work well when you use multi-query or some other functions that use GET method while query string can be very long and you have to worry about 
+the maximum length of it.
+
+### `$fb->uri($path, \%query_param)`
+
+Returns URI object w/ the specified path and query parameter. If is\_beta 
+returns true, the base url is https://graph.beta.facebook.com/ . Otherwise its 
+base url is https://graph.facebook.com/ . `request()` automatically determines 
+if it should use `uri()` or `video_uri()` based on target path and parameters 
+so you won't use `uri()` or `video_uri()` directly as long as you are using 
+requesting methods that are provided in this module.
+
+### `$fb->video_uri($path, \%query_param)`
+
+Returns URI object w/ the specified path and query parameter. This should only 
+be used when posting a video.
+
+### `$fb->site_uri($path, \%query_param)`
+
+Returns URI object w/ the specified path and query parameter. It is mainly 
+used to generate URL for auth dialog, but you could use this when redirecting 
+users to your Facebook page, App's Canvas page or any location on facebook.com. 
+
+    my $fb = Facebook::OpenGraph->new(+{is_beta => 1});
+    $c->redirect($fb->site_uri($path_to_canvas));
+    # https://www.beta.facebook.com/$path_to_canvas
+
+### `$fb->parse_signed_request($signed_request_str)`
+
+It parses signed\_request that Facebook Platform gives to your callback endpoint.
+
+    my $req = Plack::Request->new($env);
+    my $val = $fb->parse_signed_request($req->query_param('signed_request'));
+
+### `$fb->auth_uri(\%args)`
+
+Returns URL for Facebook OAuth dialog. You can redirect your user to this 
+returning URL for authorization purpose. See 
+[https://developers.facebook.com/docs/reference/dialogs/oauth/](https://developers.facebook.com/docs/reference/dialogs/oauth/) for details.
+
+    my $auth_url = $fb->auth_uri(+{
+        display => 'page', # Dialog's display type. Default value is 'page.'
+        scope   => [qw/email publish_actions/],
+    });
+    $c->redirect($auth_url);
+
+### `$fb->set_access_token($access_token)`
+
+Set $access\_token as the access token to be used on `request()`. `access_token()` 
+returns this value.
+
+### `$fb->get_app_token`
+
+Obtain an access token for application. Give the returning value to 
+`set_access_token()` and you can make request on behalf of your application. 
+This access token never expires unless you reset application secret key on App 
+Dashboard so you might want to store this value w/in your process like below...
+
+    package MyApp::OpenGraph;
+    use parent 'Facebook::OpenGraph';
+    
+    sub get_app_token {
+        my $self = shift;
+        return $self->{__app_access_token__}
+            ||= $self->SUPER::get_app_token->{access_token};
+    }
+
+Or you might want to use Cache::Memory::Simple or something similar to it and 
+refetch token at an interval of your choice. Maybe you want to store token on 
+DB and want this method to return the stored value. So you should override it 
+as you like.
+
+### `$fb->get_user_token_by_code($given_code)`
+
+Obtain an access token for user based on `$code`. `$code` should be obtained 
+on your callback endpoint which is specified on `eredirect_uri`. Give the 
+returning access token to `set_access_token()` and you can act on behalf of 
+the user.
+
+    # On OAuth callback page which you specified on $fb->redirect_uri.
+    my $req          = Plack::Request->new($env);
+    my $token_ref    = $fb->get_user_token_by_code($req->query_param('code'))
+    my $access_token = $token_ref->{access_token};
+    my $expires      = $token_ref->{expires};
+
+### `$fb->get($path, \%param, \@headers)`
+
+Alias to `request()` that sends `GET` request.
+
+    my $path = 'zuck'; # should be ID or username
+    my $user = $fb->get($path);
+    #{
+    #    name   => 'Mark Zuckerberg',
+    #    id     => 4,
+    #    locale => 'en_US',
+    #}
+
+### `$fb->post($path, \%param, \@headers)`
+
+Alias to `request()` that sends `POST` request.
+
+    my $res = $fb->publish('/me/photos', +{source => '/path/to/pic.png'});
+    #{
+    #    id      => 123456,
+    #    post_id => '123456_987654',
+    #
+    #}
+
+### `$fb->fetch($path, \%param, \@headers)`
+
+Alias to `get()` for those who got used to [Facebook::Graph](https://metacpan.org/pod/Facebook::Graph)
+
+### `$fb->publish($path, \%param, \@headers)`
+
+Alias to `post()` for those who got used to [Facebook::Graph](https://metacpan.org/pod/Facebook::Graph)
+
+### `$fb->fetch_with_etag($path, \%param, $etag_value)`
+
+Alias to `request()` that sends `GET` request w/ given ETag value. Returns 
+undef if requesting data is not modified. Otherwise it returns modified data.
+
+    my $user = $fb->fetch_with_etag('/zuck', +{fields => 'email'}, $etag);
+
+### `$fb->bulk_fetch(\@paths)`
+
+Request batch request and returns an array reference.
+
+    my $data = $fb->bulk_fetch([qw/zuck go.hagiwara/]);
+    #[
+    #    {
+    #        link => 'http://www.facebook.com/zuck',
+    #        name => 'Mark Zuckerberg',
+    #    },
+    #    {
+    #        link => 'http://www.facebook.com/go.hagiwara',
+    #        name => 'Go Hagiwara',
+    #    }
+    #]
+
+### `$fb->batch(\@requests)`
+
+Request batch request and returns an array reference.
+
+    my $data = $fb->batch([
+        +{method => 'GET', relative_url => 'zuck'},
+        +{method => 'GET', relative_url => 'oklahomer.docs'},
+    ]);
+
+### `$fb->batch_fast(\@requests)`
+
+Request batch request and returns results as array reference, but it doesn't 
+create [Facebook::OpenGraph::Response](https://metacpan.org/pod/Facebook::OpenGraph::Response) to handle each response.
+
+    my $data = $fb->batch_fast([
+        +{method => 'GET', relative_url => 'zuck'},
+        +{method => 'GET', relative_url => 'oklahomer.docs'},
+    ]);
+    #[
+    #    [
+    #        {
+    #            body    => {id => 4, name => 'Mark Zuckerberg', .....},
+    #            headers => [ .... ],
+    #            code    => 200,
+    #        },
+    #        {
+    #            body    => {id => 204277149587596, name => 'Oklahomer', .....},
+    #            headers => [ .... ],
+    #            code    => 200,
+    #        },
+    #    ]
+    #]
+
+### `$fb->fql($fql_query)`
+
+Alias to `request()` that optimizes query parameter for FQL query and sends 
+`GET` request.
+
+    my $res = $fb->fql('SELECT display_name FROM application WHERE app_id = 12345');
+    #{
+    #    data => [{
+    #        display_name => 'app',
+    #    }],
+    #}
+
+### `$fb->bulk_fql(\%fql_queries)`
+
+Alias to `fql()` to request multiple FQL query at once.
+
+    my $res = $fb->bulk_fql(+{
+        'all friends' => 'SELECT uid2 FROM friend WHERE uid1 = me()',
+        'my name'     => 'SELECT name FROM user WHERE uid = me()',
+    });
+    #{
+    #    data => [
+    #        {
+    #            fql_result_set => [
+    #                {uid2 => 12345},
+    #                {uid2 => 67890},
+    #            ],
+    #            name => 'all friends',
+    #        },
+    #        {
+    #            fql_result_set => [
+    #                name => 'Michael Corleone'
+    #            ],
+    #            name => 'my name',
+    #        },
+    #    ],
+    #}
+
+### `$fb->delete($path, \%param)`
+
+Alias to `request()` that sends DELETE request to delete object on Facebook's 
+social graph. It sends POST request w/ method=delete query parameter when 
+DELETE request fails. I know it's weird, but sometimes DELETE fails and POST w/ 
+method=delete works.
+
+    $fb->delete($object_id);
+
+### `$fb->request($request_method, $path, \%param, \@headers)`
+
+Sends request to Facebook Platform and returns [Facebook::Graph::Response](https://metacpan.org/pod/Facebook::Graph::Response) 
+object.
+
+### `$fb->gen_appsecret_proof`
+
+Generate signature for appsecret\_proof parameter. This method is called in 
+`request()` if `$self-`use\_appsecret\_proof> is set. See 
+[http://facebook-docs.oklahome.net/archives/52097348.html](http://facebook-docs.oklahome.net/archives/52097348.html) for Japanese Info.
+
+### `$fb->create_response($http_status_code, $http_status_message, \@response_headers, $response_content)`
+
+Creates and returns [Facebook::OpenGraph::Response](https://metacpan.org/pod/Facebook::OpenGraph::Response). If you wish to use 
+customized response class, then override this method to return 
+MyApp::Better::Response.
+
+### `$fb->prep_param(\%param)`
+
+Handles sending parameters and format them in the way Graph API spec states. 
+This method is called in `request()` so you don't usually use this method 
+directly.
+
+### `$fb->prep_fields_recursive(\@fields)`
+
+Handles fields parameter and format it in the way Graph API spec states. 
+The main purpose of this method is to deal w/ Field Expansion
+([https://developers.facebook.com/docs/graph-api/using-graph-api/#fieldexpansion](https://developers.facebook.com/docs/graph-api/using-graph-api/#fieldexpansion)). 
+This method is called in `prep_param` which is called in `request()` so you 
+don't usually use this method directly.
+
+    # simple fields
+    $fb->prep_fields_recursive([qw/name email albums/]); # name,email,albums
+
+    # use field expansion
+    $fb->prep_fields_recursive([
+        'name',
+        'email',
+        +{
+            albums => +{
+                fields => [
+                    'name',
+                    +{
+                        photos => +{
+                            fields => [
+                                'name',
+                                'picture',
+                                +{
+                                    tags => +{
+                                        limit => 2,
+                                    },
+                                }
+                            ],
+                            limit => 3,
+                        }
+                    }
+                ],
+                limit => 5,
+            }
+        }
+    ]);
+    # 'name,email,albums.fields(name,photos.fields(name,picture,tags.limit(2)).limit(3)).limit(5)'
+
+### `$fb->publish_action($action_type, \%param)`
+
+Alias to `request()` that optimizes body content and endpoint to send `POST` 
+request to publish Open Graph Action.
+
+    my $res = $fb->publish_action('give', +{crap => 'https://sample.com/poop/'});
+    #{id => 123456}
+
+### `$fb->create_test_users(\@settings)`
+
+    my $res = $fb->create_test_users([
+        +{
+            permissions => [qw/publish_actions/],
+            locale      => 'en_US',
+            installed   => 'true',
+        },
+        +{
+            permissions => [qw/publish_actions email read_stream/],
+            locale      => 'ja_JP', 
+            installed   => 'true',
+        }
+    ])
+    #[
+    #    +{
+    #        id           => 123456789,
+    #        access_token => '5678uiop',
+    #        login_url    => 'https://www.facebook.com/........',
+    #        email        => '.....@tfbnw.net',
+    #        password     => '.......',
+    #    },
+    #    +{
+    #        id           => 1234567890,
+    #        access_token => '5678uiopasadfasdfa',
+    #        login_url    => 'https://www.facebook.com/........',
+    #        email        => '.....@tfbnw.net',
+    #        password     => '.......',
+    #    },
+    #];
+
+Alias to `request()` that optimizes to create test users for your application.
+
+### `$fb->publish_staging_resource($file_path)`
+
+Alias to `request()` that optimizes body content to send `POST` request to upload image to Object API's staging environment.
+
+    my $fb = Facebook::OpenGraph->new(+{
+        access_token => $USER_ACCESS_TOKEN,
+    });
+    my $res = $fb->publish_staging_resource('/path/to/file');
+    #{
+    #  uri => 'fbstaging://graph.facebook.com/staging_resources/MDExMzc3MDU0MDg1ODQ3OTY2OjE5MDU4NTM1MzQ=',
+    #};
+
+### `$fb->check_object($object_id_or_url)`
+
+Alias to `request()` that sends `POST` request to Facebook Debugger to 
+check/update object.
+
+     $fb->check_object('https://sample.com/object/');
+     $fb->check_object($object_id);
+    
+
+# AUTHOR
+
+Oklahomer <hagiwara dot go at gmail dot com>
+
+# SUPPORT
+
+- Repository
+
+    [https://github.com/oklahomer/p5-Facebook-OpenGraph/](https://github.com/oklahomer/p5-Facebook-OpenGraph/)
+
+- Bug Reports
+
+    [https://github.com/oklahomer/p5-Facebook-OpenGraph/issues](https://github.com/oklahomer/p5-Facebook-OpenGraph/issues)
+
+# SEE ALSO
+
+[Facebook::Graph](https://metacpan.org/pod/Facebook::Graph)
+
+# LICENSE
+
+This library is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
