@@ -514,7 +514,7 @@ sub prep_param {
     return $param_ref;
 }
 
-# Using the Graph API: Reading > Making Nested Requests
+# Using the Graph API: Reading > Choosing Fields > Making Nested Requests
 # https://developers.facebook.com/docs/graph-api/using-graph-api/
 sub prep_fields_recursive {
     my ($self, $val) = @_;
