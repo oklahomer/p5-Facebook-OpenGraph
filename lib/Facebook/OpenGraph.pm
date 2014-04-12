@@ -443,18 +443,17 @@ sub request {
     );
 
     my $res = $self->create_response(@res_elms);
-    if ($res->is_success) {
-        return $res;
+
+    # return F::OG::Response object on success
+    return $res if $res->is_success;
+
+    # Use later version of Furl::HTTP to utilize req_headers and
+    # req_content. This Should be helpful when debugging.
+    my $msg = $res->error_string;
+    if ($res->req_headers) {
+        $msg .= "\n" . $res->req_headers . $res->req_content;
     }
-    else {
-        # Use later version of Furl::HTTP to utilize req_headers and
-        # req_content. This Should be helpful when debugging.
-        my $msg = $res->error_string;
-        if ($res->req_headers) {
-            $msg .= "\n" . $res->req_headers . $res->req_content;
-        }
-        croak $msg;
-    }
+    croak $msg;
 }
 
 sub gen_appsecret_proof {
