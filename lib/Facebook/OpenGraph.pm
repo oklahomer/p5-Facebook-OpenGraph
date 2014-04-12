@@ -177,6 +177,11 @@ sub get_app_token {
     my $self = shift;
 
     croak 'app_id and secret must be set' unless $self->app_id && $self->secret;
+
+    # Document does not mention what grant_type is all about or what values can
+    # be set, but RFC 6749 covers the basic idea of grant types and Section 4.4
+    # describes Client Credentials Grant.
+    # http://tools.ietf.org/html/rfc6749#section-4.4
     return $self->_get_token(+{grant_type => 'client_credentials'});
 }
 
@@ -377,7 +382,11 @@ sub request {
     }
 
     $headers ||= [];
-    # http://tools.ietf.org/html/draft-ietf-oauth-v2-10#section-5.1.1
+
+    # Document says we can pass access_token as a part of query parameter,
+    # but it actually supports Authorization header to be compliant with the
+    # OAuth 2.0 spec.
+    # http://tools.ietf.org/html/rfc6749#section-7
     if ($self->access_token) {
         push @$headers, (
                             'Authorization',
