@@ -713,14 +713,21 @@ Access token for user, application or Facebook Page.
 
 =item * redirect_uri
 
-The URL to be used for authorization. Detail should be found at 
+The URL to be used for authorization. User will be redirected to this URL after 
+login dialog. Detail should be found at 
 L<https://developers.facebook.com/docs/reference/dialogs/oauth/>.
+
+You must keep in mind that "The URL you specify must be a URL with the same 
+base domain specified in your app's settings, a Canvas URL of the form 
+https://apps.facebook.com/YOUR_APP_NAMESPACE or a Page Tab URL of the form 
+https://www.facebook.com/PAGE_USERNAME/app_YOUR_APP_ID"
 
 =item * batch_limit
 
 The maximum # of queries that can be set w/in a single batch request. If the # 
 of given queries exceeds this, then queries are divided into multiple batch 
 requests and responses are combined so it seems just like a single request. 
+
 Default value is 50 as API documentation says. Official documentation is 
 located at L<https://developers.facebook.com/docs/graph-api/making-multiple-requests/>
 
@@ -753,8 +760,9 @@ You must specify access_token and application secret to utilize this.
       redirect_uri        => 'https://sample.com/auth_callback', # for OAuth
       batch_limit         => 50,
       json                => JSON->new->utf8,
-      is_beta             => 1,
+      is_beta             => 0,
       use_appsecret_proof => 1,
+      use_post_method     => 0,
   })
 
 =head2 Instance Methods
