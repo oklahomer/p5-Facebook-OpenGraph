@@ -122,8 +122,13 @@ sub parse_signed_request {
     return $val;
 }
 
+# Detailed flow is described here.
 # Manually Build a Login Flow > Logging people in > Invoking the login dialog
 # https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow/
+#
+# Parameters for login dialog are shown here.
+# Login Dialog > Parameters
+# https://developers.facebook.com/docs/reference/dialogs/oauth/
 sub auth_uri {
     my ($self, $param_ref) = @_;
     $param_ref ||= +{};
@@ -131,14 +136,32 @@ sub auth_uri {
         unless $self->redirect_uri && $self->app_id;
 
     if (my $scope_ref = ref $param_ref->{scope}) {
+        # "A comma separated list of permission names which you would like
+        # people to grant your app."
         $param_ref->{scope} 
-            = $scope_ref eq 'ARRAY' ? join q{,}, @{$param_ref->{scope}}
+            = $scope_ref eq 'ARRAY' ? join q{,}, @{ $param_ref->{scope} }
             :                         croak 'scope must be string or array ref'
             ;
     }
+
+    # "The URL to redirect to after a button is clicked or tapped in the
+    # dialog."
     $param_ref->{redirect_uri} = $self->redirect_uri;
-    $param_ref->{client_id}    = $self->app_id;
-    $param_ref->{display}      ||= 'page';
+
+    # "Your App ID. This is called client_id instead of app_id for this
+    # particular method in order to be compliant with the OAuth 2.0
+    # specification."
+    $param_ref->{client_id} = $self->app_id;
+
+    # "If you are using the URL redirect dialog implementation, then this will
+    # be a full page display, shown within Facebook.com. This display type is
+    # called page."
+    $param_ref->{display} ||= 'page';
+
+    # "Response data is included as URL parameters and contains code parameter
+    # (an encrypted string unique to each login request). This is the default
+    # behaviour if this parameter is not specified."
+    $param_ref->{response_type} ||= 'code';
 
     return $self->site_uri('/dialog/oauth/', $param_ref)->as_string;
 }
@@ -336,14 +359,8 @@ sub request {
         %{$param_ref || +{}},
     });
 
-    # Official document is not provided yet, but I'm pretty sure it's some sort 
-    # of signature that Amazon requires for each API request.
-    # Check PHP SDK(base_facebook.php) for detail. It already implemented it.
-    #  protected function getAppSecretProof($access_token) {
-    #    return hash_hmac('sha256', $access_token, $this->getAppSecret());
-    #  }
-    # To enable this you have to visit App Setting > Advanced > Security and 
-    # check "Require AppSecret Proof for Server API call"
+    # Securing Graph API Requests > Verifying Graph API Calls with appsecret_proof
+    # https://developers.facebook.com/docs/graph-api/securing-requests/
     if ($self->use_appsecret_proof) {
         $param_ref->{appsecret_proof} = $self->gen_appsecret_proof;
     }
@@ -819,12 +836,15 @@ It parses signed_request that Facebook Platform gives to your callback endpoint.
 =head3 C<< $fb->auth_uri(\%args) >>
 
 Returns URL for Facebook OAuth dialog. You can redirect your user to this 
-returning URL for authorization purpose. See 
-L<https://developers.facebook.com/docs/reference/dialogs/oauth/> for details.
+URL for authorization purpose.
+
+See the detailed flow at L<https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow>. 
+Optional values are shown at L<https://developers.facebook.com/docs/reference/dialogs/oauth/>.
 
   my $auth_url = $fb->auth_uri(+{
-      display => 'page', # Dialog's display type. Default value is 'page.'
-      scope   => [qw/email publish_actions/],
+      display       => 'page', # Dialog's display type. Default value is 'page.'
+      response_type => 'code',
+      scope         => [qw/email publish_actions/],
   });
   $c->redirect($auth_url);
 

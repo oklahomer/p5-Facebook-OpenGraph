@@ -22,10 +22,11 @@ subtest 'correct' => sub {
         is_deeply(
             +{$uri->query_form},
             +{
-                redirect_uri =>'https://sample.com/auth_cb',
-                scope        => 'email,publish_actions',
-                display      => 'page',
-                client_id    => 1234567,
+                redirect_uri  =>'https://sample.com/auth_cb',
+                scope         => 'email,publish_actions',
+                display       => 'page',
+                response_type => 'code',
+                client_id     => 1234567,
             },
             'query parameter',
         );
@@ -48,10 +49,11 @@ subtest 'correct' => sub {
         is_deeply(
             +{$uri->query_form},
             +{
-                redirect_uri =>'https://sample.com/auth_cb',
-                scope        => 'email,publish_actions',
-                display      => 'page',
-                client_id    => 1234567,
+                redirect_uri  =>'https://sample.com/auth_cb',
+                scope         => 'email,publish_actions',
+                display       => 'page',
+                response_type => 'code',
+                client_id     => 1234567,
             },
             'query parameter',
         );
