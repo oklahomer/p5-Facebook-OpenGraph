@@ -30,6 +30,7 @@ sub json        { shift->{json}        }
 sub is_success {
     my $self = shift;
     # code 2XX or 304
+    # 304 is returned when you use ETag and the data is not changed
     return substr($self->code, 0, 1) == 2 || $self->code == 304;
 }
 
@@ -80,6 +81,9 @@ sub as_hashref {
     return $hash_ref;
 }
 
+# Indicates whether the data is modified.
+# It should be used when you request with ETag
+# https://developers.facebook.com/docs/reference/ads-api/etags-reference/
 sub is_modified {
     my $self = shift;
     my $not_modified = $self->code == 304  &&  $self->message eq 'Not Modified';
@@ -167,14 +171,14 @@ Returns response body
 
 =head3 C<< $res->req_headers >>
 
-Returns request header. This is especially useful for debugging. You must install the later 
-version of Furl to enable this or otherwise empty string will be returned.
-Also you have to specify Furl::HTTP->new(capture_request => 1) option.
+Returns request header. This is especially useful for debugging. You must 
+install later version of Furl to enable this or otherwise empty string will be 
+returned. Also you have to specify Furl::HTTP->new(capture_request => 1) option.
 
 =head3 C<< $res->req_content >>
 
-Returns request body. This is especially useful for debugging. You must install the later 
-version of Furl to enable this or otherwise empty string will be returned.
+Returns request body. This is especially useful for debugging. You must install 
+later version of Furl to enable this or otherwise empty string will be returned.
 Also you have to specify Furl::HTTP->new(capture_request => 1) option.
 
 =head3 C<< $res->is_success >>
