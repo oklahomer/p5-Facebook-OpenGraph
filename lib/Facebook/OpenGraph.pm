@@ -456,6 +456,8 @@ sub request {
     croak $msg;
 }
 
+# Securing Graph API Requests > Verifying Graph API Calls with appsecret_proof > Generating the proof
+# https://developers.facebook.com/docs/graph-api/securing-requests/
 sub gen_appsecret_proof {
     my $self = shift;
     croak 'app secret must be set'   unless $self->secret;
@@ -735,10 +737,10 @@ JSON->new->utf8.
 =item * use_appsecret_proof
 
 Whether to use appsecret_proof parameter or not. Default is 0.
-Official document is not provided yet, but official PHP SDK support it so I 
-implemented it anyway. Please refer to PHP SDK for detail. To enable this 
-parameter you have to visit App Setting > Advanced > Security and check 
-"Require AppSecret Proof for Server API call." 
+Long-desired official document is now provided at 
+L<https://developers.facebook.com/docs/graph-api/securing-requests/>
+
+You must specify access_token and application secret to utilize this.
 
 =back
 
