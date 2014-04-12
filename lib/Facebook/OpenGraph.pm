@@ -97,13 +97,25 @@ sub parse_signed_request {
     croak 'signed_request is not given' unless $signed_request;
     croak 'secret key must be set'      unless $self->secret;
 
+    # "1. Split the signed request into two parts delineated by a '.' character
+    # (eg. 238fsdfsd.oijdoifjsidf899)"
     my ($enc_sig, $payload) = split(m{ \. }xms, $signed_request);
+
+    # "2. Decode the first part - the encoded signature - from base64url"
     my $sig = urlsafe_b64decode($enc_sig);
+
+    # "3. Decode the second part - the 'payload' - from base64url and then
+    # decode the resultant JSON object"
     my $val = $self->json->decode(urlsafe_b64decode($payload));
 
+    # "It specifically uses HMAC-SHA256 encoding, which you can again use with
+    # most programming languages."
     croak 'algorithm must be HMAC-SHA256'
         unless uc($val->{algorithm}) eq 'HMAC-SHA256';
 
+    # "You can compare this encoded signature with an expected signature using
+    # the payload you received as well as the app secret which is known only to
+    # your and ensure that they match."
     my $expected_sig = hmac_sha256($payload, $self->secret);
     croak 'Signature does not match' unless $sig eq $expected_sig;
 
