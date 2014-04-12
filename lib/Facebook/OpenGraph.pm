@@ -644,19 +644,43 @@ This is Facebook::OpenGraph version 1.12
 
 Facebook::OpenGraph is a Perl interface to handle Facebook's Graph API.
 This was inspired by L<Facebook::Graph>, but this focuses on simplicity and 
-customizability because Facebook Platform modifies its API spec so frequently 
+customizability because Facebook Platform modifies its API specs so frequently 
 and we have to be able to handle it in shorter period of time.
 
 This module does B<NOT> provide ways to set and validate parameters for each 
 API endpoint like Facebook::Graph does with Any::Moose. Instead it provides 
-some basic methods for HTTP request and various methods to handle Graph API's 
-functionality such as Batch Request, FQL including multi-query, Field 
-Expansion, ETag, wall posting w/ photo or video, creating Test Users, checking 
-and updating Open Graph Object or web page w/ OGP, publishing Open Graph 
-Action, deleting Open Graph Object and etc...
+some basic methods for HTTP request. It also provides some methods that wrap 
+C<request()> for you to easily utilize most of Graph API's functionality 
+including:
 
-You can specify endpoints and request parameters by yourself so it should be 
-easier to test the latest API spec.
+=over 4
+
+=item * Batch Request
+
+=item * FQL 
+
+=item * FQL with Multi-Query
+
+=item * Field Expansion
+
+=item * Etag
+
+=item * Wall Posting w/ Photo or Video
+
+=item * Creating Test Users
+
+=item * Checking and Updating Open Graph Object or Web Page w/ OGP
+
+=item * Publishing Open Graph Action
+
+=item * Deleting Open Graph Object
+
+=item * Posting Staging Resource for Open Graph Object
+
+=back
+
+In most cases you can specify endpoints and request parameters by yourself so 
+it should be easier to test the latest API specs.
 
 =head1 METHODS
 
@@ -796,7 +820,8 @@ Accessor method that returns URL that is used for user authorization.
 Accessor method that returns the maximum # of queries that can be set w/in a 
 single batch request. If the # of given queries exceeds this, then queries are 
 divided into multiple batch requests and responses are combined so it just 
-seems like a single batch request. Default value is 50 as API documentation says.
+seems like a single batch request. Default value is 50 as API documentation 
+says.
 
 =head3 C<< $fb->is_beta >>
 
