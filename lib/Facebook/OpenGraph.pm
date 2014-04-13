@@ -203,6 +203,25 @@ sub get_user_token_by_code {
     return $token_ref;
 }
 
+
+# Access Tokens > Expiration and Extending Tokens
+# https://developers.facebook.com/docs/facebook-login/access-tokens/
+sub exchange_token {
+    my ($self, $short_term_token) = @_;
+
+    croak 'short term token is not given' unless $short_term_token;
+    croak 'app_id and secret must be set' unless $self->app_id && $self->secret;
+
+    my $query_ref = +{
+        grant_type        => 'fb_exchange_token',
+        fb_exchange_token => $short_term_token,
+    };
+    my $token_ref = $self->_get_token($query_ref);
+    croak 'expires is not returned' unless $token_ref->{expires};
+
+    return $token_ref;
+}
+
 sub _get_token {
     my ($self, $param_ref) = @_;
 
@@ -642,18 +661,21 @@ This is Facebook::OpenGraph version 1.12
 
 =head1 DESCRIPTION
 
-Facebook::OpenGraph is a Perl interface to handle Facebook's Graph API.
+Facebook::OpenGraph is a Perl interface to handle Facebook's Graph API. 
 This was inspired by L<Facebook::Graph>, but this focuses on simplicity and 
 customizability because Facebook Platform modifies its API specs so frequently 
 and we have to be able to handle it in shorter period of time.
 
 This module does B<NOT> provide ways to set and validate parameters for each 
 API endpoint like Facebook::Graph does with Any::Moose. Instead it provides 
-some basic methods for HTTP request. It also provides some methods that wrap 
-C<request()> for you to easily utilize most of Graph API's functionality 
+some basic methods for HTTP request. It also provides some handy methods that 
+wrap C<request()> for you to easily utilize most of Graph API's functionalities 
 including:
 
 =over 4
+
+=item * Acquiring user, app and/or page token and refreshing user token for 
+long lived one. 
 
 =item * Batch Request
 
