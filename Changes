@@ -2,6 +2,11 @@ Revision history for Perl extension Facebook::OpenGraph
 
 {{$NEXT}}
 
+1.13 2014-04-13T02:55:26Z
+    - Add exchange_token() to aqcuire long lived user token
+    - Update links to official document
+    - Add more comments for each implementation
+
 1.12 2014-02-27T16:40:08Z
     - Fixed test comments
     - Updated document URLs

@@ -80,7 +80,7 @@
          "web" : "https://github.com/oklahomer/p5-Facebook-OpenGraph"
       }
    },
-   "version" : "1.12",
+   "version" : "1.13",
    "x_contributors" : [
       "Oklahomer <go.hagiwara@facebook.com>",
       "Oklahomer <hagiwara.go@gmail.com>"

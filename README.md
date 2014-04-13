@@ -4,7 +4,7 @@ Facebook::OpenGraph - Simple way to handle Facebook's Graph API.
 
 # VERSION
 
-This is Facebook::OpenGraph version 1.12
+This is Facebook::OpenGraph version 1.13
 
 # SYNOPSIS
 
@@ -49,21 +49,33 @@ This is Facebook::OpenGraph version 1.12
 
 # DESCRIPTION
 
-Facebook::OpenGraph is a Perl interface to handle Facebook's Graph API.
+Facebook::OpenGraph is a Perl interface to handle Facebook's Graph API. 
 This was inspired by [Facebook::Graph](https://metacpan.org/pod/Facebook::Graph), but this focuses on simplicity and 
-customizability because Facebook Platform modifies its API spec so frequently 
+customizability because Facebook Platform modifies its API specs so frequently 
 and we have to be able to handle it in shorter period of time.
 
 This module does __NOT__ provide ways to set and validate parameters for each 
 API endpoint like Facebook::Graph does with Any::Moose. Instead it provides 
-some basic methods for HTTP request and various methods to handle Graph API's 
-functionality such as Batch Request, FQL including multi-query, Field 
-Expansion, ETag, wall posting w/ photo or video, creating Test Users, checking 
-and updating Open Graph Object or web page w/ OGP, publishing Open Graph 
-Action, deleting Open Graph Object and etc...
+some basic methods for HTTP request. It also provides some handy methods that 
+wrap `request()` for you to easily utilize most of Graph API's functionalities 
+including:
 
-You can specify endpoints and request parameters by yourself so it should be 
-easier to test the latest API spec.
+- Acquiring user, app and/or page token and refreshing user token for 
+long lived one. 
+- Batch Request
+- FQL 
+- FQL with Multi-Query
+- Field Expansion
+- Etag
+- Wall Posting w/ Photo or Video
+- Creating Test Users
+- Checking and Updating Open Graph Object or Web Page w/ OGP
+- Publishing Open Graph Action
+- Deleting Open Graph Object
+- Posting Staging Resource for Open Graph Object
+
+In most cases you can specify endpoints and request parameters by yourself so 
+it should be easier to test the latest API specs.
 
 # METHODS
 
@@ -118,16 +130,27 @@ _%args_ can contain...
 
 - redirect\_uri
 
-    The URL to be used for authorization. Detail should be found at 
+    The URL to be used for authorization. User will be redirected to this URL after 
+    login dialog. Detail should be found at 
     [https://developers.facebook.com/docs/reference/dialogs/oauth/](https://developers.facebook.com/docs/reference/dialogs/oauth/).
+
+    You must keep in mind that "The URL you specify must be a URL with the same 
+    base domain specified in your app's settings, a Canvas URL of the form 
+    https://apps.facebook.com/YOUR\_APP\_NAMESPACE or a Page Tab URL of the form 
+    https://www.facebook.com/PAGE\_USERNAME/app\_YOUR\_APP\_ID"
 
 - batch\_limit
 
     The maximum # of queries that can be set w/in a single batch request. If the # 
     of given queries exceeds this, then queries are divided into multiple batch 
     requests and responses are combined so it seems just like a single request. 
+
     Default value is 50 as API documentation says. Official documentation is 
     located at [https://developers.facebook.com/docs/graph-api/making-multiple-requests/](https://developers.facebook.com/docs/graph-api/making-multiple-requests/)
+
+    You must be aware that "each call within the batch is counted separately for 
+    the purposes of calculating API call limits and resource limits." 
+    See [https://developers.facebook.com/docs/reference/ads-api/api-rate-limiting/](https://developers.facebook.com/docs/reference/ads-api/api-rate-limiting/).
 
 - is\_beta
 
@@ -142,10 +165,10 @@ _%args_ can contain...
 - use\_appsecret\_proof
 
     Whether to use appsecret\_proof parameter or not. Default is 0.
-    Official document is not provided yet, but official PHP SDK support it so I 
-    implemented it anyway. Please refer to PHP SDK for detail. To enable this 
-    parameter you have to visit App Setting > Advanced > Security and check 
-    "Require AppSecret Proof for Server API call." 
+    Long-desired official document is now provided at 
+    [https://developers.facebook.com/docs/graph-api/securing-requests/](https://developers.facebook.com/docs/graph-api/securing-requests/)
+
+    You must specify access\_token and application secret to utilize this.
 
     my $fb = Facebook::OpenGraph->new(+{
         app_id              => 123456,
@@ -156,8 +179,9 @@ _%args_ can contain...
         redirect_uri        => 'https://sample.com/auth_callback', # for OAuth
         batch_limit         => 50,
         json                => JSON->new->utf8,
-        is_beta             => 1,
+        is_beta             => 0,
         use_appsecret_proof => 1,
+        use_post_method     => 0,
     })
 
 ## Instance Methods
@@ -191,7 +215,8 @@ Accessor method that returns URL that is used for user authorization.
 Accessor method that returns the maximum # of queries that can be set w/in a 
 single batch request. If the # of given queries exceeds this, then queries are 
 divided into multiple batch requests and responses are combined so it just 
-seems like a single batch request. Default value is 50 as API documentation says.
+seems like a single batch request. Default value is 50 as API documentation 
+says.
 
 ### `$fb->is_beta`
 
@@ -249,12 +274,15 @@ It parses signed\_request that Facebook Platform gives to your callback endpoint
 ### `$fb->auth_uri(\%args)`
 
 Returns URL for Facebook OAuth dialog. You can redirect your user to this 
-returning URL for authorization purpose. See 
-[https://developers.facebook.com/docs/reference/dialogs/oauth/](https://developers.facebook.com/docs/reference/dialogs/oauth/) for details.
+URL for authorization purpose.
+
+See the detailed flow at [https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow](https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow). 
+Optional values are shown at [https://developers.facebook.com/docs/reference/dialogs/oauth/](https://developers.facebook.com/docs/reference/dialogs/oauth/).
 
     my $auth_url = $fb->auth_uri(+{
-        display => 'page', # Dialog's display type. Default value is 'page.'
-        scope   => [qw/email publish_actions/],
+        display       => 'page', # Dialog's display type. Default value is 'page.'
+        response_type => 'code',
+        scope         => [qw/email publish_actions/],
     });
     $c->redirect($auth_url);
 
@@ -383,6 +411,10 @@ create [Facebook::OpenGraph::Response](https://metacpan.org/pod/Facebook::OpenGr
     #        },
     #    ]
     #]
+
+You can specify access token for each query w/in a single batch request. 
+See [https://developers.facebook.com/docs/graph-api/making-multiple-requests/](https://developers.facebook.com/docs/graph-api/making-multiple-requests/) 
+for detail.
 
 ### `$fb->fql($fql_query)`
 

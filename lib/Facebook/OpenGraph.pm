@@ -12,7 +12,7 @@ use Digest::SHA qw(hmac_sha256 hmac_sha256_hex);
 use MIME::Base64::URLSafe qw(urlsafe_b64decode);
 use Scalar::Util qw(blessed);
 
-our $VERSION = '1.12';
+our $VERSION = '1.13';
 
 sub new {
     my $class = shift;
@@ -616,7 +616,7 @@ Facebook::OpenGraph - Simple way to handle Facebook's Graph API.
 
 =head1 VERSION
 
-This is Facebook::OpenGraph version 1.12
+This is Facebook::OpenGraph version 1.13
 
 =head1 SYNOPSIS
     
@@ -776,6 +776,10 @@ requests and responses are combined so it seems just like a single request.
 
 Default value is 50 as API documentation says. Official documentation is 
 located at L<https://developers.facebook.com/docs/graph-api/making-multiple-requests/>
+
+You must be aware that "each call within the batch is counted separately for 
+the purposes of calculating API call limits and resource limits." 
+See L<https://developers.facebook.com/docs/reference/ads-api/api-rate-limiting/>.
 
 =item * is_beta
 
@@ -1039,6 +1043,10 @@ create L<Facebook::OpenGraph::Response> to handle each response.
   #        },
   #    ]
   #]
+
+You can specify access token for each query w/in a single batch request. 
+See L<https://developers.facebook.com/docs/graph-api/making-multiple-requests/> 
+for detail.
 
 =head3 C<< $fb->fql($fql_query) >>
 
