@@ -956,6 +956,19 @@ the user.
   my $access_token = $token_ref->{access_token};
   my $expires      = $token_ref->{expires};
 
+=head3 C<< $fb->exchange_token($short_term_token) >>
+
+Exchange short lived access token for long lived one. Short lived tokens are 
+ones that you obtain with C<get_user_token_by_code()>. Usually long lived 
+tokens live about 60 days while short lived ones live about 2 hours.
+
+  my $extended_token_ref = $fb->exchange_token($token_ref->{access_token});
+  my $access_token       = $extended_token_ref->{access_token};
+  my $expires            = $extended_token_ref->{expires};
+
+If you loved how old offline_access permission worked and are looking for a 
+substitute you might want to try this.
+
 =head3 C<< $fb->get($path, \%param, \@headers) >>
 
 Alias to C<request()> that sends C<GET> request.
