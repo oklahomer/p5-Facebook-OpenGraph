@@ -186,7 +186,7 @@ sub get_app_token {
 }
 
 # Manually Build a Login Flow > Confirming identity > Exchanging code for an access token
-# https://developers.facebook.com/docs/facebook-login/login-flow-for-web-no-jssdk/#exchangecode
+# https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow
 sub get_user_token_by_code {
     my ($self, $code) = @_;
 
