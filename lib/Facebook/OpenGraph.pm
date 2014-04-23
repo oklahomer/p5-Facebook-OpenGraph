@@ -484,6 +484,20 @@ sub gen_appsecret_proof {
     return hmac_sha256_hex($self->access_token, $self->secret);
 }
 
+sub js_cookie_name {
+    my $self = shift;
+    croak 'app_id must be set' unless $self->app_id;
+
+    # Cookie is set by JS SDK with a anme of fbsr_{app_id}. Official document
+    # is not provided for more than 3 yaers so I quote from PHP SDK's code.
+    # "Constructs and returns the name of the cookie that potentially houses
+    # the signed request for the app user. The cookie is not set by the
+    # BaseFacebook class, but it may be set by the JavaScript SDK."
+    # The cookie value can be parsed as signed request and it contains 'code'
+    # to exchange for access toekn.
+    return sprintf('fbsr_%d', $self->app_id);
+}
+
 sub create_response {
     my $self = shift;
     return Facebook::OpenGraph::Response->new(+{
@@ -1115,9 +1129,24 @@ object.
 
 =head3 C<< $fb->gen_appsecret_proof >>
 
-Generate signature for appsecret_proof parameter. This method is called in 
+Generates signature for appsecret_proof parameter. This method is called in 
 C<request()> if C<$self->use_appsecret_proof> is set. See 
 L<http://facebook-docs.oklahome.net/archives/52097348.html> for Japanese Info.
+
+=head3 C<< $fb->js_cookie_name >>
+
+Generates and returns the name of cookie that is set by JS SDK on client side 
+login. This value can be parsed as signed request and the parsed data structure 
+contains 'code' to exchange for acess token.
+
+  if (my $cookie = $c->req->cookie( $fb->js_cookie_name )) {
+    # User is not logged in yet, but cookie is set by JS SDK on previous visit.
+    my $val = $fb->parse_signed_request($cookie);
+    my $token_ref = $fb->get_user_token_by_code($val->{code});
+  }
+  else {
+    return $c->redirect( $fb->auth_uri );
+  }
 
 =head3 C<< $fb->create_response($http_status_code, $http_status_message, \@response_headers, $response_content) >>
 
