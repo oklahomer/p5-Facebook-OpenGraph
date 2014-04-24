@@ -20,12 +20,32 @@ sub new {
 }
 
 # accessors
-sub code        { shift->{code}        }
-sub message     { shift->{message}     }
-sub content     { shift->{content}     }
-sub req_headers { shift->{req_headers} }
-sub req_content { shift->{req_content} }
-sub json        { shift->{json}        }
+sub code        { shift->{code}             }
+sub headers     { shift->{headers}          }
+sub message     { shift->{message}          }
+sub content     { shift->{content}          }
+sub req_headers { shift->{req_headers}      }
+sub req_content { shift->{req_content}      }
+sub json        { shift->{json}             }
+sub etag        { shift->header('etag')     }
+
+sub header {
+    my ($self, $key) = @_;
+
+    croak 'header field name is not given' unless $key;
+
+    $self->{header} ||= do {
+        my $ref = +{};
+
+        while (my ($k, $v) = splice @{ $self->headers }, 0, 2) {
+            $ref->{$k} = $v;
+        }
+
+        $ref;
+    };
+
+    return $self->{header}->{$key};
+}
 
 sub is_success {
     my $self = shift;
@@ -190,6 +210,17 @@ returned. Also you have to specify Furl::HTTP->new(capture_request => 1) option.
 Returns request body. This is especially useful for debugging. You must install 
 later version of Furl to enable this or otherwise empty string will be returned.
 Also you have to specify Furl::HTTP->new(capture_request => 1) option.
+
+=head3 C<< $res->etag >>
+
+Returns ETag value that is given as a part of response headers.
+
+=head3 C<< $res->header($field_name) >>
+
+Returns specified header field value.
+
+  my $res  = $fb->request('GET', 'go.hagiwara');
+  my $etag = $res->header('etag'); # "a376a57cb3a4bd3a3c6a53fca06b0fd5badee50b"
 
 =head3 C<< $res->is_success >>
 
