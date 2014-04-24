@@ -176,8 +176,6 @@ sub set_access_token {
 sub get_app_token {
     my $self = shift;
 
-    croak 'app_id and secret must be set' unless $self->app_id && $self->secret;
-
     # Document does not mention what grant_type is all about or what values can
     # be set, but RFC 6749 covers the basic idea of grant types and Section 4.4
     # describes Client Credentials Grant.
@@ -203,6 +201,36 @@ sub get_user_token_by_code {
     return $token_ref;
 }
 
+sub get_user_token_by_cookie {
+    my ($self, $cookie_value) = @_;
+
+    croak 'cookie value is not given' unless $cookie_value;
+
+    my $parsed_signed_request = $self->parse_signed_request($cookie_value);
+    
+    # https://github.com/oklahomer/p5-Facebook-OpenGraph/issues/1#issuecomment-41065480
+    # parsed content should be something like below.
+    # {
+    #     algorithm => "HMAC-SHA256",
+    #     issued_at => 1398180151,
+    #     code      => "SOME_OPAQUE_STRING",
+    #     user_id   => 44007581,
+    # };
+    croak q{"code" is not contained in cookie value: } . $cookie_value
+        unless $parsed_signed_request->{code};
+
+    # Redirect_uri MUST be empty string in this case.
+    # That's why I didn't use get_user_token_by_code().
+    my $query_ref = +{
+        code         => $parsed_signed_request->{code},
+        redirect_uri => '',
+    };
+    my $token_ref = $self->_get_token($query_ref);
+
+    croak 'expires is not returned' unless $token_ref->{expires};
+
+    return $token_ref;
+}
 
 # Access Tokens > Expiration and Extending Tokens
 # https://developers.facebook.com/docs/facebook-login/access-tokens/
@@ -210,7 +238,6 @@ sub exchange_token {
     my ($self, $short_term_token) = @_;
 
     croak 'short term token is not given' unless $short_term_token;
-    croak 'app_id and secret must be set' unless $self->app_id && $self->secret;
 
     my $query_ref = +{
         grant_type        => 'fb_exchange_token',
@@ -224,6 +251,8 @@ sub exchange_token {
 
 sub _get_token {
     my ($self, $param_ref) = @_;
+    
+    croak 'app_id and secret must be set' unless $self->app_id && $self->secret;
 
     $param_ref = +{
         %$param_ref,
@@ -911,7 +940,22 @@ users to your Facebook page, App's Canvas page or any location on facebook.com.
 
 =head3 C<< $fb->parse_signed_request($signed_request_str) >>
 
-It parses signed_request that Facebook Platform gives to your callback endpoint.
+It parses signed_request that Facebook Platform gives to you on various 
+situations. situations may include
+
+=over 4
+
+=item * Given as a URL fragment on callback endpoint after login flow is done 
+with Login Dialog
+
+=item * POSTed when Page Tab App is loaded
+
+=item * Set in a form of cookie by JS SDK
+
+=back
+
+Fields in returning value are introduced at 
+L<https://developers.facebook.com/docs/reference/login/signed-request/>.
 
   my $req = Plack::Request->new($env);
   my $val = $fb->parse_signed_request($req->query_param('signed_request'));
@@ -969,6 +1013,23 @@ the user.
   my $token_ref    = $fb->get_user_token_by_code($req->query_param('code'))
   my $access_token = $token_ref->{access_token};
   my $expires      = $token_ref->{expires};
+
+=head3 C<< $fb->get_user_token_by_cookie($cookie_value)>>
+
+Obtain user access token based on the cookie value that is set by JS SDK.
+Cookie name should be determined with C<js_cookie_name()>.
+
+  if (my $cookie = $c->req->cookie( $fb->js_cookie_name )) {
+    # User is not logged in yet, but cookie is set by JS SDK on previous visit.
+    my $token_ref = $fb->get_user_token_by_cookie($cookie);
+    # {
+    #     "access_token" : "new_token_string_qwerty",
+    #     "expires" : 5752
+    # };
+  }
+  else {
+    return $c->redirect( $fb->auth_uri );
+  }
 
 =head3 C<< $fb->exchange_token($short_term_token) >>
 
@@ -1137,16 +1198,8 @@ L<http://facebook-docs.oklahome.net/archives/52097348.html> for Japanese Info.
 
 Generates and returns the name of cookie that is set by JS SDK on client side 
 login. This value can be parsed as signed request and the parsed data structure 
-contains 'code' to exchange for acess token.
-
-  if (my $cookie = $c->req->cookie( $fb->js_cookie_name )) {
-    # User is not logged in yet, but cookie is set by JS SDK on previous visit.
-    my $val = $fb->parse_signed_request($cookie);
-    my $token_ref = $fb->get_user_token_by_code($val->{code});
-  }
-  else {
-    return $c->redirect( $fb->auth_uri );
-  }
+contains 'code' to exchange for acess token. See C<get_user_token_by_cookie()> 
+for detail.
 
 =head3 C<< $fb->create_response($http_status_code, $http_status_message, \@response_headers, $response_content) >>
 
