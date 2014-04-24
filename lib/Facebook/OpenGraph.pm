@@ -1014,7 +1014,7 @@ the user.
   my $access_token = $token_ref->{access_token};
   my $expires      = $token_ref->{expires};
 
-=head3 C<< $fb->get_user_token_by_cookie($cookie_value)>>
+=head3 C<< $fb->get_user_token_by_cookie($cookie_value) >>
 
 Obtain user access token based on the cookie value that is set by JS SDK.
 Cookie name should be determined with C<js_cookie_name()>.
