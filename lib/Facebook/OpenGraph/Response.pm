@@ -34,10 +34,20 @@ sub is_success {
     return substr($self->code, 0, 1) == 2 || $self->code == 304;
 }
 
-# Errors: Error codes
-# https://developers.facebook.com/docs/reference/api/errors/
+# Using the Graph API > Handling Errors
+# https://developers.facebook.com/docs/graph-api/using-graph-api/
 sub error_string {
     my $self = shift;
+
+    # When error occurs, response should be given in a form of below:
+    #{
+    #  "error": {
+    #    "message": "Message describing the error", 
+    #    "type": "OAuthException", 
+    #    "code": 190 ,
+    #    "error_subcode": 460
+    #  }
+    #}
     my $error = eval { $self->as_hashref->{error}; };
 
     my $err_str = q{};
