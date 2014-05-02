@@ -301,6 +301,10 @@ Fields in returning value are introduced at
 Returns URL for Facebook OAuth dialog. You can redirect your user to this 
 URL for authorization purpose.
 
+If Facebook Platform version is set on initialisation, that value is 
+prepended to the path. 
+[https://developers.facebook.com/docs/apps/versions#dialogs](https://developers.facebook.com/docs/apps/versions#dialogs).
+
 See the detailed flow at [https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow](https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow). 
 Optional values are shown at [https://developers.facebook.com/docs/reference/dialogs/oauth/](https://developers.facebook.com/docs/reference/dialogs/oauth/).
 

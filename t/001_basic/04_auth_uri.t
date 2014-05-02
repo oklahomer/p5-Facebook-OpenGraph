@@ -18,7 +18,7 @@ subtest 'correct' => sub {
         my $uri = URI->new($url);
         is $uri->scheme, 'https', 'scheme';
         is $uri->host, 'www.facebook.com', 'host';
-        is $uri->path, '/dialog/oauth/', 'path';
+        is $uri->path, '/dialog/oauth', 'path';
         is_deeply(
             +{$uri->query_form},
             +{
@@ -45,7 +45,34 @@ subtest 'correct' => sub {
         my $uri = URI->new($url);
         is $uri->scheme, 'https', 'scheme';
         is $uri->host, 'www.beta.facebook.com', 'host';
-        is $uri->path, '/dialog/oauth/', 'path';
+        is $uri->path, '/dialog/oauth', 'path';
+        is_deeply(
+            +{$uri->query_form},
+            +{
+                redirect_uri  =>'https://sample.com/auth_cb',
+                scope         => 'email,publish_actions',
+                display       => 'page',
+                response_type => 'code',
+                client_id     => 1234567,
+            },
+            'query parameter',
+        );
+    };
+
+    subtest 'version is set on initialization' => sub {
+        my $fb = Facebook::OpenGraph->new(+{
+            app_id       => 1234567,
+            redirect_uri => 'https://sample.com/auth_cb',
+            version      => 'v2.0',
+        });
+        my $url = $fb->auth_uri(+{
+            scope => [qw/email publish_actions/],
+        });
+        
+        my $uri = URI->new($url);
+        is $uri->scheme, 'https', 'scheme';
+        is $uri->host, 'www.facebook.com', 'host';
+        is $uri->path, '/v2.0/dialog/oauth', 'path';
         is_deeply(
             +{$uri->query_form},
             +{

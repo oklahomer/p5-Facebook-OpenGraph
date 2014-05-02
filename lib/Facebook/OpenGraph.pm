@@ -165,7 +165,13 @@ sub auth_uri {
     # behaviour if this parameter is not specified."
     $param_ref->{response_type} ||= 'code';
 
-    return $self->site_uri('/dialog/oauth/', $param_ref)->as_string;
+    my $uri = $self->site_uri('/dialog/oauth', $param_ref);
+
+    # Platform Versioning > Making Versioned Requests > Dialogs.
+    # https://developers.facebook.com/docs/apps/versions#dialogs
+    $uri->path( $self->gen_versioned_path($uri->path) );
+
+    return $uri->as_string;
 }
 
 sub set_access_token {
@@ -998,6 +1004,10 @@ L<https://developers.facebook.com/docs/reference/login/signed-request/>.
 
 Returns URL for Facebook OAuth dialog. You can redirect your user to this 
 URL for authorization purpose.
+
+If Facebook Platform version is set on initialisation, that value is 
+prepended to the path. 
+L<https://developers.facebook.com/docs/apps/versions#dialogs>.
 
 See the detailed flow at L<https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow>. 
 Optional values are shown at L<https://developers.facebook.com/docs/reference/dialogs/oauth/>.
