@@ -60,6 +60,7 @@ some basic methods for HTTP request. It also provides some handy methods that
 wrap `request()` for you to easily utilize most of Graph API's functionalities 
 including:
 
+- API versioning that was introduced at f8, 2014.
 - Acquiring user, app and/or page token and refreshing user token for 
 long lived one. 
 - Batch Request
@@ -105,8 +106,16 @@ _%args_ can contain...
     allowed. This value is prepended to the end point on `request()` unless 
     you don't specify in requesting path.
 
-    Detailed information should be found at 
-    [https://developers.facebook.com/docs/apps/versions](https://developers.facebook.com/docs/apps/versions).
+        my $fb = Facebook::OpenGraph->new(+{version => 'v2.0'});
+        $fb->get('/zuck');      # Use version 2.0 by accessing /v2.0/zuck
+        $fb->get('/v1.0/zuck'); # Ignore the default version and use version 1.0
+
+        my $fb = Facebook::OpenGraph->new();
+        $fb->get('/zuck'); # Unversioned API access since version is not specified
+                           # on initialisation or each reqeust.
+
+    As of 2014-04-30, the latest version is v2.0. Detailed information should be
+    found at [https://developers.facebook.com/docs/apps/versions](https://developers.facebook.com/docs/apps/versions).
 
 - ua
 

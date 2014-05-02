@@ -743,6 +743,8 @@ including:
 
 =over 4
 
+=item * API versioning that was introduced at f8, 2014.
+
 =item * Acquiring user, app and/or page token and refreshing user token for 
 long lived one. 
 
@@ -803,8 +805,16 @@ migrations. Default value is undef because unversioned API access is also
 allowed. This value is prepended to the end point on C<request()> unless 
 you don't specify in requesting path.
 
-Detailed information should be found at 
-L<https://developers.facebook.com/docs/apps/versions>.
+  my $fb = Facebook::OpenGraph->new(+{version => 'v2.0'});
+  $fb->get('/zuck');      # Use version 2.0 by accessing /v2.0/zuck
+  $fb->get('/v1.0/zuck'); # Ignore the default version and use version 1.0
+
+  my $fb = Facebook::OpenGraph->new();
+  $fb->get('/zuck'); # Unversioned API access since version is not specified
+                     # on initialisation or each reqeust.
+
+As of 2014-04-30, the latest version is v2.0. Detailed information should be
+found at L<https://developers.facebook.com/docs/apps/versions>.
 
 =item * ua
 
