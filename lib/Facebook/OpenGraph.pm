@@ -29,6 +29,7 @@ sub new {
         json                => $args->{json} || JSON->new->utf8,
         use_appsecret_proof => $args->{use_appsecret_proof} || 0,
         use_post_method     => $args->{use_post_method} || 0,
+        version             => $args->{version} || undef,
         ua                  => $args->{ua} || Furl::HTTP->new(
             capture_request     => 1,
             agent               => __PACKAGE__ . '/' . $VERSION,
@@ -48,6 +49,7 @@ sub is_beta             { shift->{is_beta}             }
 sub json                { shift->{json}                }
 sub use_appsecret_proof { shift->{use_appsecret_proof} }
 sub use_post_method     { shift->{use_post_method}     }
+sub version             { shift->{version}             }
 
 sub uri {
     my $self = shift;
@@ -405,8 +407,9 @@ sub bulk_fql {
 sub request {
     my ($self, $method, $uri, $param_ref, $headers) = @_;
 
-    $method    = uc $method;
-    $uri       = $self->uri($uri) unless blessed($uri) && $uri->isa('URI');
+    $method = uc $method;
+    $uri    = $self->uri($uri) unless blessed($uri) && $uri->isa('URI');
+    $uri->path( $self->gen_versioned_path($uri->path) );
     $param_ref = $self->prep_param(+{
         $uri->query_form(+{}),
         %{$param_ref || +{}},
@@ -511,6 +514,21 @@ sub gen_appsecret_proof {
     croak 'app secret must be set'   unless $self->secret;
     croak 'access_token must be set' unless $self->access_token;
     return hmac_sha256_hex($self->access_token, $self->secret);
+}
+
+# Platform Versioning > Making Versioned Requests
+# https://developers.facebook.com/docs/apps/versions
+sub gen_versioned_path {
+    my ($self, $path) = @_;
+
+    if ($self->version && $path !~ m{\A /v(?:\d+)\.(?:\d+)/ }x) {
+        # If default platform version is set on initialisation
+        # and given path doesn't contain version,
+        # then prepend the default version.
+        $path = sprintf('/%s%s', $self->version, $path);
+    }
+
+    return $path;
 }
 
 sub js_cookie_name {
@@ -770,6 +788,16 @@ L<https://developers.facebook.com/apps/>.
 Facebook application secret. Should be obtained from 
 L<https://developers.facebook.com/apps/>.
 
+=item * version
+
+Facebook Platform version. From 2014-04-30 they support versioning and 
+migrations. Default value is undef because unversioned API access is also 
+allowed. This value is prepended to the end point on C<request()> unless 
+you don't specify in requesting path.
+
+Detailed information should be found at 
+L<https://developers.facebook.com/docs/apps/versions>.
+
 =item * ua
 
 L<Furl::HTTP> object. Default is equivalent to 
@@ -856,6 +884,7 @@ You must specify access_token and application secret to utilize this.
       is_beta             => 0,
       use_appsecret_proof => 1,
       use_post_method     => 0,
+      version             => undef,
   })
 
 =head2 Instance Methods
@@ -913,6 +942,11 @@ Accessor method that returns whether to use POST method for every API call and
 alternatively set method=(GET|POST|DELETE) query parameter. PHP SDK works this 
 way. This might work well when you use multi-query or some other functions that use GET method while query string can be very long and you have to worry about 
 the maximum length of it.
+
+=head3 C<< $fb->version >>
+
+Accessor method that returns Facebook Platform version. This can be undef 
+unless you explicitly on initialisation.
 
 =head3 C<< $fb->uri($path, \%query_param) >>
 

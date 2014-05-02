@@ -22,6 +22,7 @@ subtest 'default' => sub {
     is $fb->is_beta, 0, 'default is_beta is 0';
     is $fb->use_appsecret_proof, 0, 'default use_appsecret_proof is 0';
     is $fb->use_post_method, 0, 'default use_post_method is 0';
+    is $fb->version, undef, 'default Facebook Platform version is undef';
 
     my $json = $fb->json;
     isa_ok $json, 'JSON', '$fb->json isa JSON';
@@ -45,6 +46,7 @@ subtest 'accessor' => sub {
         js                  => JSON->new->utf8,
         use_appsecret_proof => 1,
         use_post_method     => 1,
+        version             => 'v1.0',
     });
 
     is $fb->app_id, '123456789', 'app id';
@@ -56,6 +58,7 @@ subtest 'accessor' => sub {
     is $fb->is_beta, 1, 'is_beta';
     is $fb->use_appsecret_proof, 1, 'use_appsecret_proof';
     is $fb->use_post_method, 1, 'use_post_method';
+    is $fb->version, 'v1.0', 'version';
 
     my $ua = $fb->ua;
     isa_ok $ua, 'Furl::HTTP', '$fb->ua isa Furl::HTTP';

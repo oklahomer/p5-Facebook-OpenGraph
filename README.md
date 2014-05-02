@@ -98,6 +98,16 @@ _%args_ can contain...
     Facebook application secret. Should be obtained from 
     [https://developers.facebook.com/apps/](https://developers.facebook.com/apps/).
 
+- version
+
+    Facebook Platform version. From 2014-04-30 they support versioning and 
+    migrations. Default value is undef because unversioned API access is also 
+    allowed. This value is prepended to the end point on `request()` unless 
+    you don't specify in requesting path.
+
+    Detailed information should be found at 
+    [https://developers.facebook.com/docs/apps/versions](https://developers.facebook.com/docs/apps/versions).
+
 - ua
 
     [Furl::HTTP](https://metacpan.org/pod/Furl::HTTP) object. Default is equivalent to 
@@ -182,6 +192,7 @@ _%args_ can contain...
         is_beta             => 0,
         use_appsecret_proof => 1,
         use_post_method     => 0,
+        version             => undef,
     })
 
 ## Instance Methods
@@ -239,6 +250,11 @@ Accessor method that returns whether to use POST method for every API call and
 alternatively set method=(GET|POST|DELETE) query parameter. PHP SDK works this 
 way. This might work well when you use multi-query or some other functions that use GET method while query string can be very long and you have to worry about 
 the maximum length of it.
+
+### `$fb->version`
+
+Accessor method that returns Facebook Platform version. This can be undef 
+unless you explicitly on initialisation.
 
 ### `$fb->uri($path, \%query_param)`
 
