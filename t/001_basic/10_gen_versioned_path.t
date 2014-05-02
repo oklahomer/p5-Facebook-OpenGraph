@@ -16,6 +16,11 @@ subtest 'version is set on initialization' => sub {
         '/v1.0/me/friends',
         'version is explicitly given in the path',
     );
+
+    is($fb->gen_versioned_path('/'), '/v2.0/');
+    is($fb->gen_versioned_path(''), '/v2.0/');
+    is($fb->gen_versioned_path(), '/v2.0/');
+    is($fb->gen_versioned_path('/v1.0/'), '/v1.0/');
 };
 
 subtest 'default version is not set on initialization' => sub {
@@ -28,6 +33,11 @@ subtest 'default version is not set on initialization' => sub {
         '/v1.0/12345',
         'version is explicitly given in the path'
     );
+
+    is($fb->gen_versioned_path('/'), '/');
+    is($fb->gen_versioned_path(''), '/');
+    is($fb->gen_versioned_path(), '/');
+    is($fb->gen_versioned_path('/v1.0/'), '/v1.0/');
 };
 
 done_testing;

@@ -526,6 +526,8 @@ sub gen_appsecret_proof {
 # https://developers.facebook.com/docs/apps/versions
 sub gen_versioned_path {
     my ($self, $path) = @_;
+    
+    $path = '/' unless $path;
 
     if ($self->version && $path !~ m{\A /v(?:\d+)\.(?:\d+)/ }x) {
         # If default platform version is set on initialisation
