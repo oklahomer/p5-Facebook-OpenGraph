@@ -1,6 +1,7 @@
 Revision history for Perl extension Facebook::OpenGraph
 
 {{$NEXT}}
+    - Add support for API and dialog versioning that were introduced at f8
 
 1.20 2014-04-24T13:56:31Z
     - Add js_cookie_name and get_user_token_by_cookie to work with JS SDK
