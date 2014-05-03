@@ -49,7 +49,7 @@ subtest 'get' => sub {
 };
 
 subtest 'w/o secret key' => sub {
-        
+
     my $fb = Facebook::OpenGraph->new(+{
         app_id => 123456789,
     });
@@ -61,7 +61,7 @@ subtest 'w/o secret key' => sub {
         qr/app_id and secret must be set /,
         'secret key is not set',
     );
-    
+
 };
 
 subtest 'w/o app_id' => sub {
@@ -77,7 +77,7 @@ subtest 'w/o app_id' => sub {
         qr/app_id and secret must be set /,
         'app_id is not set',
     );
-    
+
 };
 
 done_testing;

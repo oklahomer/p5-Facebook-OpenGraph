@@ -20,14 +20,14 @@ sub new {
 }
 
 # accessors
-sub code        { shift->{code}             }
-sub headers     { shift->{headers}          }
-sub message     { shift->{message}          }
-sub content     { shift->{content}          }
-sub req_headers { shift->{req_headers}      }
-sub req_content { shift->{req_content}      }
-sub json        { shift->{json}             }
-sub etag        { shift->header('etag')     }
+sub code        { shift->{code}         }
+sub headers     { shift->{headers}      }
+sub message     { shift->{message}      }
+sub content     { shift->{content}      }
+sub req_headers { shift->{req_headers}  }
+sub req_content { shift->{req_content}  }
+sub json        { shift->{json}         }
+sub etag        { shift->header('etag') }
 
 sub header {
     my ($self, $key) = @_;
@@ -62,8 +62,8 @@ sub error_string {
     # When error occurs, response should be given in a form of below:
     #{
     #  "error": {
-    #    "message": "Message describing the error", 
-    #    "type": "OAuthException", 
+    #    "message": "Message describing the error",
+    #    "type": "OAuthException",
     #    "code": 190 ,
     #    "error_subcode": 460
     #  }
@@ -201,13 +201,13 @@ Returns response body
 
 =head3 C<< $res->req_headers >>
 
-Returns request header. This is especially useful for debugging. You must 
-install later version of Furl to enable this or otherwise empty string will be 
+Returns request header. This is especially useful for debugging. You must
+install later version of Furl to enable this or otherwise empty string will be
 returned. Also you have to specify Furl::HTTP->new(capture_request => 1) option.
 
 =head3 C<< $res->req_content >>
 
-Returns request body. This is especially useful for debugging. You must install 
+Returns request body. This is especially useful for debugging. You must install
 later version of Furl to enable this or otherwise empty string will be returned.
 Also you have to specify Furl::HTTP->new(capture_request => 1) option.
 
@@ -232,10 +232,10 @@ Returns error string.
 
 =head3 C<< $res->as_json >>
 
-Returns response content as JSON string. Most of the time the response content 
-itself is JSON formatted so it basically returns response content without doing 
-anything. When Graph API returns plain text just saying 'true' or 'false,' it 
-turns the content into JSON format like '{"success" : "(true|false)"}' so you 
+Returns response content as JSON string. Most of the time the response content
+itself is JSON formatted so it basically returns response content without doing
+anything. When Graph API returns plain text just saying 'true' or 'false,' it
+turns the content into JSON format like '{"success" : "(true|false)"}' so you
 can handle it in the same way as other cases.
 
 =head3 C<< $res->as_hashref >>
@@ -244,5 +244,5 @@ Returns response content in hash reference.
 
 =head3 C<< $res->is_modified >>
 
-Returns if target object is modified. This method is called in 
+Returns if target object is modified. This method is called in
 $fb->fetch_with_etag().
