@@ -1,6 +1,8 @@
 package Facebook::OpenGraph;
 use strict;
 use warnings;
+use 5.008001;
+
 use Facebook::OpenGraph::Response;
 use HTTP::Request::Common;
 use URI;

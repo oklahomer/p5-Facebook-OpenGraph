@@ -4,7 +4,7 @@
       "Oklahomer <hagiwara dot go at gmail dot com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Minilla/v0.14.1, CPAN::Meta::Converter version 2.120921",
+   "generated_by" : "Minilla/v0.15.2, CPAN::Meta::Converter version 2.141170",
    "license" : [
       "perl_5"
    ],
@@ -26,14 +26,6 @@
       ]
    },
    "prereqs" : {
-      "build" : {
-         "requires" : {
-            "ExtUtils::MakeMaker" : "6.36",
-            "Test::Exception" : "0",
-            "Test::Mock::Furl" : "0",
-            "Test::MockObject" : "0"
-         }
-      },
       "configure" : {
          "requires" : {
             "CPAN::Meta" : "0",
@@ -55,7 +47,6 @@
             "Data::Recursive::Encode" : "0",
             "Digest::SHA" : "0",
             "Furl" : "0",
-            "Furl::HTTP" : "0",
             "HTTP::Message" : "0",
             "HTTP::Request::Common" : "0",
             "JSON" : "2",
@@ -65,7 +56,16 @@
             "Scalar::Util" : "0",
             "Sub::Uplevel" : "0",
             "URI" : "0",
-            "parent" : "0"
+            "parent" : "0",
+            "perl" : "5.008001"
+         }
+      },
+      "test" : {
+         "requires" : {
+            "Test::Exception" : "0",
+            "Test::Mock::Furl" : "0",
+            "Test::MockObject" : "0",
+            "Test::More" : "0.98"
          }
       }
    },

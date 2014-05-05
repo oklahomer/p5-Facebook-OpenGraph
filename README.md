@@ -54,7 +54,7 @@ This was inspired by [Facebook::Graph](https://metacpan.org/pod/Facebook::Graph)
 customizability because Facebook Platform modifies its API specs so frequently
 and we have to be able to handle it in shorter period of time.
 
-This module does __NOT__ provide ways to set and validate parameters for each
+This module does **NOT** provide ways to set and validate parameters for each
 API endpoint like Facebook::Graph does with Any::Moose. Instead it provides
 some basic methods for HTTP request. It also provides some handy methods that
 wrap `request()` for you to easily utilize most of Graph API's functionalities

@@ -1,7 +1,7 @@
+requires 'perl', '5.008001';
 requires 'Data::Recursive::Encode';
 requires 'Digest::SHA';
 requires 'Furl';
-requires 'Furl::HTTP';
 requires 'HTTP::Message';
 requires 'HTTP::Request::Common';
 requires 'JSON', '2';
@@ -13,8 +13,8 @@ requires 'Sub::Uplevel';
 requires 'URI';
 requires 'parent';
 
-on build => sub {
-    requires 'ExtUtils::MakeMaker', '6.36';
+on test => sub {
+    requires 'Test::More', '0.98';
     requires 'Test::Exception';
     requires 'Test::Mock::Furl';
     requires 'Test::MockObject';
