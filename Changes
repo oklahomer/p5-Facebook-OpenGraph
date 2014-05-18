@@ -18,6 +18,8 @@ https://developers.facebook.com/bugs/597779113651383/
 ###############################################################################
 
 {{$NEXT}}
+
+1.22 2014-05-18T08:37:32Z
     - Fixed a bug that it croaks when 'expires' is not returned from
       /oauth/access_token
 
