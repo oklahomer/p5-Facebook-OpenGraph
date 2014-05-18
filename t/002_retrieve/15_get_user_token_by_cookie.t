@@ -108,6 +108,7 @@ subtest 'cookie value does not contain code' => sub {
     );
 };
 
+# https://developers.facebook.com/bugs/597779113651383/
 subtest 'expires is not returned from FB' => sub {
     my $secret  = 'secret';
     my $code    = 'XXXXXXXXXXXXXXXXXXXXXX';
@@ -162,9 +163,13 @@ subtest 'expires is not returned from FB' => sub {
         app_id => $app_id,
         secret => $secret,
     });
-    throws_ok (
-        sub { $fb->get_user_token_by_cookie($cookie_value) },
-        qr/expires is not returned/,
+    my $token_ref = $fb->get_user_token_by_cookie($cookie_value);
+    is_deeply(
+        $token_ref,
+        +{
+            access_token => $token,
+        },
+        'token w/ no expiration time',
     );
 };
 
