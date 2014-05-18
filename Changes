@@ -1,6 +1,25 @@
 Revision history for Perl extension Facebook::OpenGraph
 
+## CAUTION ####################################################################
+
+FROM Version 1.22 it doesn't check if 'expires' parameter is properly returned
+from /oauth/access_token endpoint. Affected methods are listed below:
+
+- get_user_token_by_code
+- get_user_token_by_cookie
+- exchange_token
+
+There are some edge cases that they do not return 'expires' so this module does
+not check its existense, any more. If 'expires' should be returned on your use
+case, you must explicitly check by yourself.
+The detailed schenario concerning those edge cases are shown at the link below.
+https://developers.facebook.com/bugs/597779113651383/
+
+###############################################################################
+
 {{$NEXT}}
+    - Fixed a bug that it croaks when 'expires' is not returned from
+      /oauth/access_token
 
 1.21 2014-05-03T00:15:37Z
     - Add support for API and dialog versioning that were introduced at f8
