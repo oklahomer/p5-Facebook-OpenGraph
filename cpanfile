@@ -19,3 +19,7 @@ on test => sub {
     requires 'Test::Mock::Furl';
     requires 'Test::MockObject';
 };
+
+on develop => sub {
+    requires 'Test::Perl::Critic';
+};
