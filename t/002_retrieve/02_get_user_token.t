@@ -77,10 +77,11 @@ subtest 'using v2.3' => sub {
     # {"access_token": <TOKEN>, "token_type":<TYPE>, "expires_in":<TIME>}.
     # We made this update to be compliant with section 5.1 of RFC 6749.
 
-    my $code    = 'XXXXXXXXXXXXXXXXXXXXXX';
-    my $app_id  = 123456789;
-    my $token   = '123456789XXXXXXXXXXX';
-    my $expires = 5183814;
+    my $code       = 'XXXXXXXXXXXXXXXXXXXXXX';
+    my $app_id     = 123456789;
+    my $token      = '123456789XXXXXXXXXXX';
+    my $expires    = 5183814;
+    my $token_type = 'bearer';
 
     $Mock_furl_http->mock(
         request => sub {
@@ -113,7 +114,7 @@ subtest 'using v2.3' => sub {
                 encode_json(+{
                     access_token => $token,
                     expires_in   => $expires,
-                    token_type   => 'Bearer',
+                    token_type   => $token_type,
                 })
             );
         },
@@ -133,7 +134,7 @@ subtest 'using v2.3' => sub {
         +{
             access_token => $token,
             expires_in   => $expires,
-            token_type   => 'Bearer',
+            token_type   => $token_type,
         },
         'token',
     );
