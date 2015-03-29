@@ -87,8 +87,8 @@ sub _uri {
     my ($self, $base, $path, $param_ref) = @_;
     my $uri = URI->new_abs($path || '/', $base);
     $uri->query_form(+{
-        $uri->query_form,     # when given $path is like /foo?bar=bazz
-        %{$param_ref || +{}}, # additional query parameter
+        $uri->query_form,       # when given $path is like /foo?bar=bazz
+        %{ $param_ref || +{} }, # additional query parameter
     });
 
     return $uri;
@@ -115,7 +115,7 @@ sub parse_signed_request {
     # "It specifically uses HMAC-SHA256 encoding, which you can again use with
     # most programming languages."
     croak 'algorithm must be HMAC-SHA256'
-        unless uc($val->{algorithm}) eq 'HMAC-SHA256';
+        unless uc( $val->{algorithm} ) eq 'HMAC-SHA256';
 
     # "You can compare this encoded signature with an expected signature using
     # the payload you received as well as the app secret which is known only to
@@ -139,13 +139,11 @@ sub auth_uri {
     croak 'redirect_uri and app_id must be set'
         unless $self->redirect_uri && $self->app_id;
 
+    # "A comma separated list of permission names which you would like people
+    # to grant your app."
     if (my $scope_ref = ref $param_ref->{scope}) {
-        # "A comma separated list of permission names which you would like
-        # people to grant your app."
-        $param_ref->{scope}
-            = $scope_ref eq 'ARRAY' ? join q{,}, @{ $param_ref->{scope} }
-            :                         croak 'scope must be string or array ref'
-            ;
+        croak 'scope must be string or array ref' unless $scope_ref eq 'ARRAY';
+        $param_ref->{scope} = join q{,}, @{ $param_ref->{scope} };
     }
 
     # "The URL to redirect to after a button is clicked or tapped in the
@@ -187,8 +185,8 @@ sub get_app_token {
     my $self = shift;
 
     # Document does not mention what grant_type is all about or what values can
-    # be set, but RFC 6749 covers the basic idea of grant types and Section 4.4
-    # describes Client Credentials Grant.
+    # be set, but RFC 6749 covers the basic idea of grant types and its Section
+    # 4.4 describes Client Credentials Grant.
     # http://tools.ietf.org/html/rfc6749#section-4.4
     return $self->_get_token(+{grant_type => 'client_credentials'});
 }
@@ -309,7 +307,7 @@ sub fetch_with_etag {
     my ($self, $uri, $param_ref, $etag) = @_;
 
     # Attach ETag value to header
-    # Returns status 304 w/o contnet or status 200 w/ modified content
+    # Returns status 304 without contnet, or status 200 with modified content
     my $header   = ['IF-None-Match' => $etag];
     my $response = $self->request('GET', $uri, $param_ref, $header);
 
@@ -341,15 +339,10 @@ sub batch {
     my @data = ();
     for my $r (@$responses_ref) {
         for my $res_ref (@$r) {
-
-            my @headers = map {
-                $_->{name} => $_->{value}
-            } @{$res_ref->{headers}};
-
             my $response = $self->create_response(
                 $res_ref->{code},
                 $res_ref->{message},
-                \@headers,
+                [ map { $_->{name} => $_->{value} } @{ $res_ref->{headers} } ],
                 $res_ref->{body},
             );
             croak $response->error_string unless $response->is_success;
@@ -368,7 +361,7 @@ sub batch_fast {
 
     # Other than HTTP header, you need to set access_token as top level
     # parameter. You can specify individual token for each request so you can
-    # act as several other users and/or pages.
+    # act as several other users and pages.
     croak 'Top level access_token must be set' unless $self->access_token;
 
     # "We currently limit the number of requests which can be in a batch to 50"
@@ -394,7 +387,6 @@ sub batch_fast {
         );
 
         push @responses, $self->post(@req);
-
     }
 
     return \@responses;
@@ -434,7 +426,7 @@ sub request {
     }
 
     # Use POST as default HTTP method and add method=(POST|GET|DELETE) to query
-    # parameter. Document says we can send HTTP DELETE method or, instead,
+    # parameter. Document only says we can send HTTP DELETE method or, instead,
     # HTTP POST method with ?method=delete to delete object. It does not say
     # POST with method=(get|post) parameter works, but PHP SDK always sends POST
     # with method parameter so... I just give you this option.
@@ -460,7 +452,7 @@ sub request {
     my $content = q{};
     if ($method eq 'POST') {
         if ($param_ref->{source} || $param_ref->{file}) {
-            # post image/video file
+            # post image or video file
 
             # https://developers.facebook.com/docs/reference/api/video/
             # When posting a video, use graph-video.facebook.com .
@@ -475,7 +467,7 @@ sub request {
             # https://developers.facebook.com/docs/reference/api/publishing/
             push @$headers, (Content_Type => 'form-data');
 
-            # Furl::HTTP document says we can use multipart/form-data w/
+            # Furl::HTTP document says we can use multipart/form-data with
             # HTTP::Request::Common.
             my $req = POST $uri, @$headers, Content => [%$param_ref];
             $content = $req->content;
@@ -488,9 +480,9 @@ sub request {
             ];
         }
         else {
-            # Post simple params such as message, link, description, etc...
+            # Post simple parameters such as message, link, description, etc...
             # Content-Type: application/x-www-form-urlencoded will be set in
-            # Furl::HTTP and $content will be treated properly.
+            # Furl::HTTP, and $content will be treated properly.
             $content = $param_ref;
         }
     }
@@ -510,8 +502,8 @@ sub request {
     # return F::OG::Response object on success
     return $res if $res->is_success;
 
-    # Use later version of Furl::HTTP to utilize req_headers and
-    # req_content. This Should be helpful when debugging.
+    # Use later version of Furl::HTTP to utilize req_headers and req_content.
+    # This Should be helpful when debugging.
     my $msg = $res->error_string;
     if ($res->req_headers) {
         $msg .= "\n" . $res->req_headers . $res->req_content;
@@ -549,7 +541,7 @@ sub js_cookie_name {
     my $self = shift;
     croak 'app_id must be set' unless $self->app_id;
 
-    # Cookie is set by JS SDK with a anme of fbsr_{app_id}. Official document
+    # Cookie is set by JS SDK with a name of fbsr_{app_id}. Official document
     # is not provided for more than 3 yaers so I quote from PHP SDK's code.
     # "Constructs and returns the name of the cookie that potentially houses
     # the signed request for the app user. The cookie is not set by the
@@ -585,7 +577,7 @@ sub prep_param {
     }
 
     # Source and file parameter contains file path.
-    # It must be an array ref to work w/ HTTP::Request::Common.
+    # It must be an array ref to work with HTTP::Request::Common.
     if (my $path = $param_ref->{source}) {
         $param_ref->{source} = ref $path ? $path : [$path];
     }
@@ -737,9 +729,9 @@ This is Facebook::OpenGraph version 1.22
 =head1 DESCRIPTION
 
 Facebook::OpenGraph is a Perl interface to handle Facebook's Graph API.
-This was inspired by L<Facebook::Graph>, but this focuses on simplicity and
-customizability because Facebook Platform modifies its API specs so frequently
-and we have to be able to handle it in shorter period of time.
+This module is inspired by L<Facebook::Graph>, but mainly focuses on simplicity
+and customizability because we must be able to keep up with frequently changing
+API specification.
 
 This module does B<NOT> provide ways to set and validate parameters for each
 API endpoint like Facebook::Graph does with Any::Moose. Instead it provides
@@ -764,11 +756,11 @@ long lived one.
 
 =item * Etag
 
-=item * Wall Posting w/ Photo or Video
+=item * Wall Posting with Photo or Video
 
 =item * Creating Test Users
 
-=item * Checking and Updating Open Graph Object or Web Page w/ OGP
+=item * Checking and Updating Open Graph Object or Web Page with OGP
 
 =item * Publishing Open Graph Action
 
@@ -778,8 +770,9 @@ long lived one.
 
 =back
 
-In most cases you can specify endpoints and request parameters by yourself so
-it should be easier to test the latest API specs.
+In most cases you can specify endpoints and request parameters by yourself and
+pass them to request() so it should be easier to test latest API specs. Other
+requesting methods merely wrap request() method for convinience.
 
 =head1 METHODS
 
@@ -801,15 +794,15 @@ L<https://developers.facebook.com/apps/>.
 
 =item * secret
 
-Facebook application secret. Should be obtained from
+Facebook application secret. It should be obtained from
 L<https://developers.facebook.com/apps/>.
 
 =item * version
 
-Facebook Platform version. From 2014-04-30 they support versioning and
-migrations. Default value is undef because unversioned API access is also
+This declares Facebook Platform version. From 2014-04-30 they support versioning
+and migrations. Default value is undef because unversioned API access is also
 allowed. This value is prepended to the end point on C<request()> unless
-you don't specify in requesting path.
+you specify one in requesting path.
 
   my $fb = Facebook::OpenGraph->new(+{version => 'v2.0'});
   $fb->get('/zuck');      # Use version 2.0 by accessing /v2.0/zuck
@@ -817,19 +810,20 @@ you don't specify in requesting path.
 
   my $fb = Facebook::OpenGraph->new();
   $fb->get('/zuck'); # Unversioned API access since version is not specified
-                     # on initialisation or each reqeust.
+                     # on initialisation or reqeust.
 
-As of 2014-04-30, the latest version is v2.0. Detailed information should be
-found at L<https://developers.facebook.com/docs/apps/versions>.
+As of 2015-03-29, the latest version is v2.3. Detailed information should be
+found at L<https://developers.facebook.com/docs/apps/versions> and
+L<https://developers.facebook.com/docs/apps/migrations>.
 
 =item * ua
 
-L<Furl::HTTP> object. Default is equivalent to
-Furl::HTTP->new(capture_request => 1). You should install 2.10 or later version
-of Furl to enable capture_request option. Or you can specify keep_request
-option for same purpose if you have Furl 2.09. capture_request option is
-recommended since it will give you the request headers and content when
-C<request()> fails.
+This should be L<Furl::HTTP> object or similar object that provides same
+interface. Default is equivalent to Furl::HTTP->new(capture_request => 1).
+You B<SHOULD> install 2.10 or later version of Furl to enable capture_request
+option. Or you can specify keep_request option for same purpose if you have Furl
+2.09. Setting capture_request option is B<strongly> recommended since it gives
+you the request headers and content when C<request()> fails.
 
   my $fb = Facebook::OpenGraph->new;
   $fb->post('/me/feed', +{message => 'Hello, world!'});
@@ -865,9 +859,10 @@ https://www.facebook.com/PAGE_USERNAME/app_YOUR_APP_ID"
 
 =item * batch_limit
 
-The maximum # of queries that can be set w/in a single batch request. If the #
-of given queries exceeds this, then queries are divided into multiple batch
-requests and responses are combined so it seems just like a single request.
+The maximum number of queries that can be set within a single batch request.
+If the number of given queries exceeds this, then queries are divided into
+multiple batch requests, and responses are combined so it seems just like a
+single request.
 
 Default value is 50 as API documentation says. Official documentation is
 located at L<https://developers.facebook.com/docs/graph-api/making-multiple-requests/>
@@ -883,8 +878,8 @@ L<https://developers.facebook.com/support/beta-tier/>.
 
 =item * json
 
-JSON object that handles requesting parameters and API response. Default is
-JSON->new->utf8.
+JSON object that handles request parameters and API response. Default is
+equivalent to JSON->new->utf8.
 
 =item * use_appsecret_proof
 
@@ -939,11 +934,11 @@ Accessor method that returns URL that is used for user authorization.
 
 =head3 C<< $fb->batch_limit >>
 
-Accessor method that returns the maximum # of queries that can be set w/in a
-single batch request. If the # of given queries exceeds this, then queries are
-divided into multiple batch requests and responses are combined so it just
-seems like a single batch request. Default value is 50 as API documentation
-says.
+Accessor method that returns the maximum number of queries that can be set
+within a single batch request. If the number of given queries exceeds this,
+then queries are divided into multiple batch requests, and responses are
+combined so it just seems like a single batch request. Default value is 50 as
+API documentation says.
 
 =head3 C<< $fb->is_beta >>
 
@@ -974,23 +969,23 @@ unless you explicitly on initialisation.
 
 =head3 C<< $fb->uri($path, \%query_param) >>
 
-Returns URI object w/ the specified path and query parameter. If is_beta
-returns true, the base url is https://graph.beta.facebook.com/ . Otherwise its
-base url is https://graph.facebook.com/ . C<request()> automatically determines
-if it should use C<uri()> or C<video_uri()> based on target path and parameters
-so you won't use C<uri()> or C<video_uri()> directly as long as you are using
+Returns URI object with specified path and query parameter. If is_beta returns
+true, the base url is https://graph.beta.facebook.com/ . Otherwise its base url
+is https://graph.facebook.com/ . C<request()> automatically determines if it
+should use C<uri()> or C<video_uri()> based on target path and parameters so
+you won't use C<uri()> or C<video_uri()> directly as long as you are using
 requesting methods that are provided in this module.
 
 =head3 C<< $fb->video_uri($path, \%query_param) >>
 
-Returns URI object w/ the specified path and query parameter. This should only
-be used when posting a video.
+Returns URI object with specified path and query parameter. This should only be
+used when posting a video.
 
 =head3 C<< $fb->site_uri($path, \%query_param) >>
 
-Returns URI object w/ the specified path and query parameter. It is mainly
-used to generate URL for auth dialog, but you could use this when redirecting
-users to your Facebook page, App's Canvas page or any location on facebook.com.
+Returns URI object with specified path and query parameter. It is mainly used to
+generate URL for Auth dialog, but you can still use this when redirecting users
+to your Facebook page, App's Canvas page or any location on facebook.com.
 
   my $fb = Facebook::OpenGraph->new(+{is_beta => 1});
   $c->redirect($fb->site_uri($path_to_canvas));
@@ -1047,7 +1042,8 @@ returns this value.
 Obtain an access token for application. Give the returning value to
 C<set_access_token()> and you can make request on behalf of your application.
 This access token never expires unless you reset application secret key on App
-Dashboard so you might want to store this value w/in your process like below...
+Dashboard so you might want to store this value within your process like
+below...
 
   package MyApp::OpenGraph;
   use parent 'Facebook::OpenGraph';
@@ -1058,10 +1054,9 @@ Dashboard so you might want to store this value w/in your process like below...
           ||= $self->SUPER::get_app_token->{access_token};
   }
 
-Or you might want to use Cache::Memory::Simple or something similar to it and
+Or you might want to use L<Cache::Memory::Simple> or something similar to
 refetch token at an interval of your choice. Maybe you want to store token on
-DB and want this method to return the stored value. So you should override it
-as you like.
+DB and override this method to return the stored value.
 
 =head3 C<< $fb->get_user_token_by_code($given_code) >>
 
@@ -1116,7 +1111,7 @@ L<https://developers.facebook.com/bugs/597779113651383/>.
   my $expires            = $extended_token_ref->{expires};
                            # named expires_in as of v2.3
 
-If you loved how old offline_access permission worked and are looking for a
+If you loved the way old offline_access permission worked, and are looking for a
 substitute you might want to try this.
 
 =head3 C<< $fb->get($path, \%param, \@headers) >>
@@ -1152,7 +1147,7 @@ Alias to C<post()> for those who got used to L<Facebook::Graph>
 
 =head3 C<< $fb->fetch_with_etag($path, \%param, $etag_value) >>
 
-Alias to C<request()> that sends C<GET> request w/ given ETag value. Returns
+Alias to C<request()> that sends C<GET> request with given ETag value. Returns
 undef if requesting data is not modified. Otherwise it returns modified data.
 
   my $user = $fb->fetch_with_etag('/zuck', +{fields => 'email'}, $etag);
@@ -1213,7 +1208,7 @@ create L<Facebook::OpenGraph::Response> to handle each response.
   #    ]
   #]
 
-You can specify access token for each query w/in a single batch request.
+You can specify access token for each query within a single batch request.
 See L<https://developers.facebook.com/docs/graph-api/making-multiple-requests/>
 for detail.
 
@@ -1258,9 +1253,9 @@ Alias to C<fql()> to request multiple FQL query at once.
 =head3 C<< $fb->delete($path, \%param) >>
 
 Alias to C<request()> that sends DELETE request to delete object on Facebook's
-social graph. It sends POST request w/ method=delete query parameter when
-DELETE request fails. I know it's weird, but sometimes DELETE fails and POST w/
-method=delete works.
+social graph. It sends POST request with method=delete query parameter when
+DELETE request fails. I know it's weird, but sometimes DELETE fails and POST
+with method=delete works.
 
   $fb->delete($object_id);
 
@@ -1297,7 +1292,7 @@ directly.
 =head3 C<< $fb->prep_fields_recursive(\@fields) >>
 
 Handles fields parameter and format it in the way Graph API spec states.
-The main purpose of this method is to deal w/ Field Expansion
+The main purpose of this method is to deal with Field Expansion
 (L<https://developers.facebook.com/docs/graph-api/using-graph-api/#fieldexpansion>).
 This method is called in C<prep_param> which is called in C<request()> so you
 don't usually use this method directly.

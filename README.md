@@ -51,9 +51,9 @@ This is Facebook::OpenGraph version 1.22
 # DESCRIPTION
 
 Facebook::OpenGraph is a Perl interface to handle Facebook's Graph API.
-This was inspired by [Facebook::Graph](https://metacpan.org/pod/Facebook::Graph), but this focuses on simplicity and
-customizability because Facebook Platform modifies its API specs so frequently
-and we have to be able to handle it in shorter period of time.
+This module is inspired by [Facebook::Graph](https://metacpan.org/pod/Facebook::Graph), but mainly focuses on simplicity
+and customizability because we must be able to keep up with frequently changing
+API specification.
 
 This module does **NOT** provide ways to set and validate parameters for each
 API endpoint like Facebook::Graph does with Any::Moose. Instead it provides
@@ -69,15 +69,16 @@ long lived one.
 - FQL with Multi-Query
 - Field Expansion
 - Etag
-- Wall Posting w/ Photo or Video
+- Wall Posting with Photo or Video
 - Creating Test Users
-- Checking and Updating Open Graph Object or Web Page w/ OGP
+- Checking and Updating Open Graph Object or Web Page with OGP
 - Publishing Open Graph Action
 - Deleting Open Graph Object
 - Posting Staging Resource for Open Graph Object
 
-In most cases you can specify endpoints and request parameters by yourself so
-it should be easier to test the latest API specs.
+In most cases you can specify endpoints and request parameters by yourself and
+pass them to request() so it should be easier to test latest API specs. Other
+requesting methods merely wrap request() method for convinience.
 
 # METHODS
 
@@ -97,15 +98,15 @@ _%args_ can contain...
 
 - secret
 
-    Facebook application secret. Should be obtained from
+    Facebook application secret. It should be obtained from
     [https://developers.facebook.com/apps/](https://developers.facebook.com/apps/).
 
 - version
 
-    Facebook Platform version. From 2014-04-30 they support versioning and
-    migrations. Default value is undef because unversioned API access is also
+    This declares Facebook Platform version. From 2014-04-30 they support versioning
+    and migrations. Default value is undef because unversioned API access is also
     allowed. This value is prepended to the end point on `request()` unless
-    you don't specify in requesting path.
+    you specify one in requesting path.
 
         my $fb = Facebook::OpenGraph->new(+{version => 'v2.0'});
         $fb->get('/zuck');      # Use version 2.0 by accessing /v2.0/zuck
@@ -113,19 +114,20 @@ _%args_ can contain...
 
         my $fb = Facebook::OpenGraph->new();
         $fb->get('/zuck'); # Unversioned API access since version is not specified
-                           # on initialisation or each reqeust.
+                           # on initialisation or reqeust.
 
-    As of 2014-04-30, the latest version is v2.0. Detailed information should be
-    found at [https://developers.facebook.com/docs/apps/versions](https://developers.facebook.com/docs/apps/versions).
+    As of 2015-03-29, the latest version is v2.3. Detailed information should be
+    found at [https://developers.facebook.com/docs/apps/versions](https://developers.facebook.com/docs/apps/versions) and
+    [https://developers.facebook.com/docs/apps/migrations](https://developers.facebook.com/docs/apps/migrations).
 
 - ua
 
-    [Furl::HTTP](https://metacpan.org/pod/Furl::HTTP) object. Default is equivalent to
-    Furl::HTTP->new(capture\_request => 1). You should install 2.10 or later version
-    of Furl to enable capture\_request option. Or you can specify keep\_request
-    option for same purpose if you have Furl 2.09. capture\_request option is
-    recommended since it will give you the request headers and content when
-    `request()` fails.
+    This should be [Furl::HTTP](https://metacpan.org/pod/Furl::HTTP) object or similar object that provides same
+    interface. Default is equivalent to Furl::HTTP->new(capture\_request => 1).
+    You **SHOULD** install 2.10 or later version of Furl to enable capture\_request
+    option. Or you can specify keep\_request option for same purpose if you have Furl
+    2.09. Setting capture\_request option is **strongly** recommended since it gives
+    you the request headers and content when `request()` fails.
 
         my $fb = Facebook::OpenGraph->new;
         $fb->post('/me/feed', +{message => 'Hello, world!'});
@@ -161,9 +163,10 @@ _%args_ can contain...
 
 - batch\_limit
 
-    The maximum # of queries that can be set w/in a single batch request. If the #
-    of given queries exceeds this, then queries are divided into multiple batch
-    requests and responses are combined so it seems just like a single request.
+    The maximum number of queries that can be set within a single batch request.
+    If the number of given queries exceeds this, then queries are divided into
+    multiple batch requests, and responses are combined so it seems just like a
+    single request.
 
     Default value is 50 as API documentation says. Official documentation is
     located at [https://developers.facebook.com/docs/graph-api/making-multiple-requests/](https://developers.facebook.com/docs/graph-api/making-multiple-requests/)
@@ -179,8 +182,8 @@ _%args_ can contain...
 
 - json
 
-    JSON object that handles requesting parameters and API response. Default is
-    JSON->new->utf8.
+    JSON object that handles request parameters and API response. Default is
+    equivalent to JSON->new->utf8.
 
 - use\_appsecret\_proof
 
@@ -233,11 +236,11 @@ Accessor method that returns URL that is used for user authorization.
 
 ### `$fb->batch_limit`
 
-Accessor method that returns the maximum # of queries that can be set w/in a
-single batch request. If the # of given queries exceeds this, then queries are
-divided into multiple batch requests and responses are combined so it just
-seems like a single batch request. Default value is 50 as API documentation
-says.
+Accessor method that returns the maximum number of queries that can be set
+within a single batch request. If the number of given queries exceeds this,
+then queries are divided into multiple batch requests, and responses are
+combined so it just seems like a single batch request. Default value is 50 as
+API documentation says.
 
 ### `$fb->is_beta`
 
@@ -268,23 +271,23 @@ unless you explicitly on initialisation.
 
 ### `$fb->uri($path, \%query_param)`
 
-Returns URI object w/ the specified path and query parameter. If is\_beta
-returns true, the base url is https://graph.beta.facebook.com/ . Otherwise its
-base url is https://graph.facebook.com/ . `request()` automatically determines
-if it should use `uri()` or `video_uri()` based on target path and parameters
-so you won't use `uri()` or `video_uri()` directly as long as you are using
+Returns URI object with specified path and query parameter. If is\_beta returns
+true, the base url is https://graph.beta.facebook.com/ . Otherwise its base url
+is https://graph.facebook.com/ . `request()` automatically determines if it
+should use `uri()` or `video_uri()` based on target path and parameters so
+you won't use `uri()` or `video_uri()` directly as long as you are using
 requesting methods that are provided in this module.
 
 ### `$fb->video_uri($path, \%query_param)`
 
-Returns URI object w/ the specified path and query parameter. This should only
-be used when posting a video.
+Returns URI object with specified path and query parameter. This should only be
+used when posting a video.
 
 ### `$fb->site_uri($path, \%query_param)`
 
-Returns URI object w/ the specified path and query parameter. It is mainly
-used to generate URL for auth dialog, but you could use this when redirecting
-users to your Facebook page, App's Canvas page or any location on facebook.com.
+Returns URI object with specified path and query parameter. It is mainly used to
+generate URL for Auth dialog, but you can still use this when redirecting users
+to your Facebook page, App's Canvas page or any location on facebook.com.
 
     my $fb = Facebook::OpenGraph->new(+{is_beta => 1});
     $c->redirect($fb->site_uri($path_to_canvas));
@@ -335,7 +338,8 @@ returns this value.
 Obtain an access token for application. Give the returning value to
 `set_access_token()` and you can make request on behalf of your application.
 This access token never expires unless you reset application secret key on App
-Dashboard so you might want to store this value w/in your process like below...
+Dashboard so you might want to store this value within your process like
+below...
 
     package MyApp::OpenGraph;
     use parent 'Facebook::OpenGraph';
@@ -346,10 +350,9 @@ Dashboard so you might want to store this value w/in your process like below...
             ||= $self->SUPER::get_app_token->{access_token};
     }
 
-Or you might want to use Cache::Memory::Simple or something similar to it and
+Or you might want to use [Cache::Memory::Simple](https://metacpan.org/pod/Cache::Memory::Simple) or something similar to
 refetch token at an interval of your choice. Maybe you want to store token on
-DB and want this method to return the stored value. So you should override it
-as you like.
+DB and override this method to return the stored value.
 
 ### `$fb->get_user_token_by_code($given_code)`
 
@@ -358,29 +361,31 @@ on your callback endpoint which is specified on `eredirect_uri`. Give the
 returning access token to `set_access_token()` and you can act on behalf of
 the user.
 
-FYI: _expires_ is **NOT** returned on some edge cases. The detail and schenario
-should be found at [https://developers.facebook.com/bugs/597779113651383/](https://developers.facebook.com/bugs/597779113651383/).
+FYI: _expires_ or _expires\_in_ is **NOT** returned on some edge cases. The
+detail and reproductive scenario should be found at
+[https://developers.facebook.com/bugs/597779113651383/](https://developers.facebook.com/bugs/597779113651383/).
 
     # On OAuth callback page which you specified on $fb->redirect_uri.
     my $req          = Plack::Request->new($env);
-    my $token_ref    = $fb->get_user_token_by_code($req->query_param('code'))
+    my $token_ref    = $fb->get_user_token_by_code($req->query_param('code'));
     my $access_token = $token_ref->{access_token};
-    my $expires      = $token_ref->{expires};
+    my $expires      = $token_ref->{expires}; # named expires_in as of v2.3
 
 ### `$fb->get_user_token_by_cookie($cookie_value)`
 
 Obtain user access token based on the cookie value that is set by JS SDK.
 Cookie name should be determined with `js_cookie_name()`.
 
-FYI: _expires_ is **NOT** returned on some edge cases. The detail and schenario
-should be found at [https://developers.facebook.com/bugs/597779113651383/](https://developers.facebook.com/bugs/597779113651383/).
+FYI: _expires_ or _expires\_in_ is **NOT** returned on some edge cases. The
+detail and reproductive schenario should be found at
+[https://developers.facebook.com/bugs/597779113651383/](https://developers.facebook.com/bugs/597779113651383/).
 
     if (my $cookie = $c->req->cookie( $fb->js_cookie_name )) {
       # User is not logged in yet, but cookie is set by JS SDK on previous visit.
       my $token_ref = $fb->get_user_token_by_cookie($cookie);
       # {
       #     "access_token" : "new_token_string_qwerty",
-      #     "expires" : 5752
+      #     "expires" : 5752 # named expires_in as of v2.3
       # };
     }
     else {
@@ -393,14 +398,16 @@ Exchange short lived access token for long lived one. Short lived tokens are
 ones that you obtain with `get_user_token_by_code()`. Usually long lived
 tokens live about 60 days while short lived ones live about 2 hours.
 
-FYI: _expires_ is **NOT** returned on some edge cases. The detail and schenario
-should be found at [https://developers.facebook.com/bugs/597779113651383/](https://developers.facebook.com/bugs/597779113651383/).
+FYI: _expires_ or _expires\_in_ is **NOT** returned on some edge cases. The
+detail and reproductive schenario should be found at
+[https://developers.facebook.com/bugs/597779113651383/](https://developers.facebook.com/bugs/597779113651383/).
 
     my $extended_token_ref = $fb->exchange_token($token_ref->{access_token});
     my $access_token       = $extended_token_ref->{access_token};
     my $expires            = $extended_token_ref->{expires};
+                             # named expires_in as of v2.3
 
-If you loved how old offline\_access permission worked and are looking for a
+If you loved the way old offline\_access permission worked, and are looking for a
 substitute you might want to try this.
 
 ### `$fb->get($path, \%param, \@headers)`
@@ -436,7 +443,7 @@ Alias to `post()` for those who got used to [Facebook::Graph](https://metacpan.o
 
 ### `$fb->fetch_with_etag($path, \%param, $etag_value)`
 
-Alias to `request()` that sends `GET` request w/ given ETag value. Returns
+Alias to `request()` that sends `GET` request with given ETag value. Returns
 undef if requesting data is not modified. Otherwise it returns modified data.
 
     my $user = $fb->fetch_with_etag('/zuck', +{fields => 'email'}, $etag);
@@ -496,7 +503,7 @@ create [Facebook::OpenGraph::Response](https://metacpan.org/pod/Facebook::OpenGr
     #    ]
     #]
 
-You can specify access token for each query w/in a single batch request.
+You can specify access token for each query within a single batch request.
 See [https://developers.facebook.com/docs/graph-api/making-multiple-requests/](https://developers.facebook.com/docs/graph-api/making-multiple-requests/)
 for detail.
 
@@ -541,9 +548,9 @@ Alias to `fql()` to request multiple FQL query at once.
 ### `$fb->delete($path, \%param)`
 
 Alias to `request()` that sends DELETE request to delete object on Facebook's
-social graph. It sends POST request w/ method=delete query parameter when
-DELETE request fails. I know it's weird, but sometimes DELETE fails and POST w/
-method=delete works.
+social graph. It sends POST request with method=delete query parameter when
+DELETE request fails. I know it's weird, but sometimes DELETE fails and POST
+with method=delete works.
 
     $fb->delete($object_id);
 
@@ -580,7 +587,7 @@ directly.
 ### `$fb->prep_fields_recursive(\@fields)`
 
 Handles fields parameter and format it in the way Graph API spec states.
-The main purpose of this method is to deal w/ Field Expansion
+The main purpose of this method is to deal with Field Expansion
 ([https://developers.facebook.com/docs/graph-api/using-graph-api/#fieldexpansion](https://developers.facebook.com/docs/graph-api/using-graph-api/#fieldexpansion)).
 This method is called in `prep_param` which is called in `request()` so you
 don't usually use this method directly.

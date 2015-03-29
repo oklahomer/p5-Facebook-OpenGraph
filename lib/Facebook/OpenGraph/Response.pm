@@ -120,10 +120,12 @@ sub as_json {
 
     my $content = $self->content;
     if ($content =~ m{\A (true|false) \z}xms) {
-        # Sometimes they return plain text saying 'true' or 'false' to indicate
-        # result. So make it JSON formatted for our convinience. The key is
-        # named "success" so its format matches w/ some other endpoints that
-        # return {"success": "(true|false)"}.
+        # On v2.0 and older version, some endpoints return plain text saying
+        # 'true' or 'false' to indicate result, so make it JSON formatted for
+        # our convinience. The key is named "success" so its format matches with
+        # other endpoints that return {"success": "(true|false)"}.
+        # From v2.1 they always return in form of {"success": "(true|false)"}.
+        # See https://developers.facebook.com/docs/apps/changelog#v2_1_changes
         $content = sprintf('{"success" : "%s"}', $1);
     };
 
@@ -133,13 +135,13 @@ sub as_json {
 sub as_hashref {
     my $self = shift;
     # just in case content is not properly formatted
-    my $hash_ref = eval { $self->json->decode($self->as_json); };
+    my $hash_ref = eval { $self->json->decode( $self->as_json ); };
     croak $@ if $@;
     return $hash_ref;
 }
 
 # Indicates whether the data is modified.
-# It should be used when you request with ETag
+# It should be used when you request with ETag.
 # https://developers.facebook.com/docs/reference/ads-api/etags-reference/
 sub is_modified {
     my $self = shift;
