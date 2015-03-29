@@ -269,9 +269,7 @@ sub _get_token {
     # It, however, returnes no "expires" parameter on some edge cases.
     # e.g. Your app requests manage_pages permission.
     # https://developers.facebook.com/bugs/597779113651383/
-    my $res_content = $response->content;
-
-    if ($res_content =~ m/\A { .+ } \z/xms) {
+    if ($response->is_api_version_eq_or_later_than('v2.3')) {
         # As of v2.3, to be compliant with RFC 6749, response is JSON formatted
         # as described below.
         # {"access_token": <TOKEN>, "token_type":<TYPE>, "expires_in":<TIME>}
@@ -279,6 +277,7 @@ sub _get_token {
         return $response->as_hashref;
     }
 
+    my $res_content = $response->content;
     my $token_ref = +{ URI->new("?$res_content")->query_form };
     croak "can't get access_token properly: $res_content"
         unless $token_ref->{access_token};

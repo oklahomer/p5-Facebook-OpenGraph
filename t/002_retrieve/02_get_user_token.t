@@ -40,7 +40,10 @@ subtest 'success' => sub {
                 1,
                 200,
                 'OK',
-                ['Content-Type' => 'text/plain; charset=UTF-8'],
+                [
+                    'Content-Type'         => 'text/plain; charset=UTF-8',
+                    'facebook-api-version' => 'v2.2',
+                ],
                 sprintf('access_token=%s&expires=%d', $token, $expires),
             );
         },
@@ -110,7 +113,10 @@ subtest 'using v2.3' => sub {
                 1,
                 200,
                 'OK',
-                ['Content-Type' => 'text/plain; charset=UTF-8'],
+                [
+                    'Content-Type'         => 'text/plain; charset=UTF-8',
+                    'facebook-api-version' => 'v2.3',
+                ],
                 encode_json(+{
                     access_token => $token,
                     expires_in   => $expires,

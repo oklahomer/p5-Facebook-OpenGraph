@@ -33,7 +33,10 @@ subtest 'get' => sub {
                 1,
                 200,
                 'OK',
-                ['Content-Type' => 'text/plain; charset=UTF-8'],
+                [
+                    'Content-Type'         => 'text/plain; charset=UTF-8',
+                    'facebook-api-version' => 'v2.0'
+                ],
                 'access_token=123456789|SSSeFWB-0EQ0qyipMdmNpJJJJjk',
             );
         },

@@ -48,17 +48,20 @@ subtest 'success' => sub {
             );
             is $args{method}, 'GET', 'HTTP GET method';
             is $args{content}, '', 'content';
-    
+
             return (
                 1,
                 200,
                 'OK',
-                ['Content-Type' => 'text/plain; charset=UTF-8'],
+                [
+                    'Content-Type'         => 'text/plain; charset=UTF-8',
+                    'facebook-api-version' => 'v2.1',
+                ],
                 sprintf('access_token=%s&expires=%d', $token, $expires),
             );
         },
     );
-    
+
     my $fb = Facebook::OpenGraph->new(+{
         app_id => $app_id,
         secret => $secret,
@@ -148,17 +151,20 @@ subtest 'expires is not returned from FB' => sub {
             );
             is $args{method}, 'GET', 'HTTP GET method';
             is $args{content}, '', 'content';
-    
+
             return (
                 1,
                 200,
                 'OK',
-                ['Content-Type' => 'text/plain; charset=UTF-8'],
+                [
+                    'Content-Type'         => 'text/plain; charset=UTF-8',
+                    'facebook-api-version' => 'v2.1',
+                ],
                 sprintf('access_token=%s', $token),
             );
         },
     );
-    
+
     my $fb = Facebook::OpenGraph->new(+{
         app_id => $app_id,
         secret => $secret,
