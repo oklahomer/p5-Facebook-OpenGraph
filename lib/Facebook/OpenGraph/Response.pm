@@ -31,6 +31,31 @@ sub req_content { shift->{req_content}  }
 sub json        { shift->{json}         }
 sub etag        { shift->header('etag') }
 
+sub api_version {
+    my $self = shift;
+    return $self->header('facebook-api-version');
+}
+
+sub is_api_version_eq_or_later_than {
+    my ($self, $comparing_version) = @_;
+    croak 'comparing version is not given.' unless $comparing_version;
+
+    (my $decimal_comparing_version = $comparing_version) =~ s/\A v //x;
+    (my $decimal_response_version  = $self->api_version) =~ s/\A v //x;
+
+    return ($decimal_comparing_version + 0) <= ($decimal_response_version + 0);
+}
+
+sub is_api_version_eq_or_older_than {
+    my ($self, $comparing_version) = @_;
+    croak 'comparing version is not given.' unless $comparing_version;
+
+    (my $decimal_comparing_version = $comparing_version) =~ s/\A v //x;
+    (my $decimal_response_version  = $self->api_version) =~ s/\A v //x;
+
+    return ($decimal_comparing_version + 0) >= ($decimal_response_version + 0);
+}
+
 sub header {
     my ($self, $key) = @_;
 
@@ -223,6 +248,23 @@ Returns specified header field value.
 
   my $res  = $fb->request('GET', 'go.hagiwara');
   my $etag = $res->header('etag'); # "a376a57cb3a4bd3a3c6a53fca06b0fd5badee50b"
+
+=head3 C<< $res->api_version >>
+
+By checking facebook-api-version header value, it returns API version that
+current API call actually experienced. This may differ from the one you
+specified. See
+L<https://developers.facebook.com/docs/apps/changelog#v2_1>
+
+=head3 C<< $res->is_api_version_eq_or_older_than($comparing_version) >>
+
+Compare $comparing_version with the facebook-api-version header value and
+returns TRUE when facebook-api-version is older than the given version.
+
+=head3 C<< $res->is_api_version_eq_or_later_than($comparing_version) >>
+
+Compare $comparing_version with the facebook-api-version header value and
+returns TRUE when facebook-api-version is newer than the given version.
 
 =head3 C<< $res->is_success >>
 

@@ -34,13 +34,16 @@ subtest 'success' => sub {
             );
             is $args{method}, 'GET', 'HTTP GET method';
             is $args{content}, '', 'content';
-            
+
             # returns long-lived access token
             return (
                 1,
                 200,
                 'OK',
-                ['Content-Type' => 'text/plain; charset=UTF-8'],
+                [
+                    'Content-Type'         => 'text/plain; charset=UTF-8',
+                    'facebook-api-version' => 'v2.1',
+                ],
                 sprintf(
                     'access_token=%s&expires=%d',
                     $long_lived_token,
@@ -49,7 +52,7 @@ subtest 'success' => sub {
             );
         },
     );
-    
+
     my $fb = Facebook::OpenGraph->new(+{
         app_id => $app_id,
         secret => 'secret',
@@ -97,7 +100,7 @@ subtest 'w/o app_id' => sub {
         qr/app_id and secret must be set /,
         'app_id is not set',
     );
-    
+
 };
 
 done_testing;

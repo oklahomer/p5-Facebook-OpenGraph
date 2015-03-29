@@ -269,9 +269,17 @@ sub _get_token {
     # It, however, returnes no "expires" parameter on some edge cases.
     # e.g. Your app requests manage_pages permission.
     # https://developers.facebook.com/bugs/597779113651383/
+    if ($response->is_api_version_eq_or_later_than('v2.3')) {
+        # As of v2.3, to be compliant with RFC 6749, response is JSON formatted
+        # as described below.
+        # {"access_token": <TOKEN>, "token_type":<TYPE>, "expires_in":<TIME>}
+        # https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow/v2.3#confirm
+        return $response->as_hashref;
+    }
+
     my $res_content = $response->content;
-    my $token_ref = +{ URI->new('?'.$res_content)->query_form };
-    croak qq{can't get access_token properly: $res_content}
+    my $token_ref = +{ URI->new("?$res_content")->query_form };
+    croak "can't get access_token properly: $res_content"
         unless $token_ref->{access_token};
 
     return $token_ref;
@@ -1062,29 +1070,31 @@ on your callback endpoint which is specified on C<eredirect_uri>. Give the
 returning access token to C<set_access_token()> and you can act on behalf of
 the user.
 
-FYI: I<expires> is B<NOT> returned on some edge cases. The detail and schenario
-should be found at L<https://developers.facebook.com/bugs/597779113651383/>.
+FYI: I<expires> or I<expires_in> is B<NOT> returned on some edge cases. The
+detail and reproductive scenario should be found at
+L<https://developers.facebook.com/bugs/597779113651383/>.
 
   # On OAuth callback page which you specified on $fb->redirect_uri.
   my $req          = Plack::Request->new($env);
-  my $token_ref    = $fb->get_user_token_by_code($req->query_param('code'))
+  my $token_ref    = $fb->get_user_token_by_code($req->query_param('code'));
   my $access_token = $token_ref->{access_token};
-  my $expires      = $token_ref->{expires};
+  my $expires      = $token_ref->{expires}; # named expires_in as of v2.3
 
 =head3 C<< $fb->get_user_token_by_cookie($cookie_value) >>
 
 Obtain user access token based on the cookie value that is set by JS SDK.
 Cookie name should be determined with C<js_cookie_name()>.
 
-FYI: I<expires> is B<NOT> returned on some edge cases. The detail and schenario
-should be found at L<https://developers.facebook.com/bugs/597779113651383/>.
+FYI: I<expires> or I<expires_in> is B<NOT> returned on some edge cases. The
+detail and reproductive schenario should be found at
+L<https://developers.facebook.com/bugs/597779113651383/>.
 
   if (my $cookie = $c->req->cookie( $fb->js_cookie_name )) {
     # User is not logged in yet, but cookie is set by JS SDK on previous visit.
     my $token_ref = $fb->get_user_token_by_cookie($cookie);
     # {
     #     "access_token" : "new_token_string_qwerty",
-    #     "expires" : 5752
+    #     "expires" : 5752 # named expires_in as of v2.3
     # };
   }
   else {
@@ -1097,12 +1107,14 @@ Exchange short lived access token for long lived one. Short lived tokens are
 ones that you obtain with C<get_user_token_by_code()>. Usually long lived
 tokens live about 60 days while short lived ones live about 2 hours.
 
-FYI: I<expires> is B<NOT> returned on some edge cases. The detail and schenario
-should be found at L<https://developers.facebook.com/bugs/597779113651383/>.
+FYI: I<expires> or I<expires_in> is B<NOT> returned on some edge cases. The
+detail and reproductive schenario should be found at
+L<https://developers.facebook.com/bugs/597779113651383/>.
 
   my $extended_token_ref = $fb->exchange_token($token_ref->{access_token});
   my $access_token       = $extended_token_ref->{access_token};
   my $expires            = $extended_token_ref->{expires};
+                           # named expires_in as of v2.3
 
 If you loved how old offline_access permission worked and are looking for a
 substitute you might want to try this.
