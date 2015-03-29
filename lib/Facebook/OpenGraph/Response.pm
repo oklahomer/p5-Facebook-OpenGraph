@@ -40,20 +40,20 @@ sub is_api_version_eq_or_later_than {
     my ($self, $comparing_version) = @_;
     croak 'comparing version is not given.' unless $comparing_version;
 
-    my $decimal_comparing_version = ( $comparing_version =~ s/\A v //rx  +  0 );
-    my $decimal_response_version  = ( $self->api_version =~ s/\A v //rx  +  0 );
+    (my $decimal_comparing_version = $comparing_version) =~ s/\A v //x;
+    (my $decimal_response_version  = $self->api_version) =~ s/\A v //x;
 
-    return $decimal_comparing_version <= $decimal_response_version;
+    return ($decimal_comparing_version + 0) <= ($decimal_response_version + 0);
 }
 
 sub is_api_version_eq_or_older_than {
     my ($self, $comparing_version) = @_;
     croak 'comparing version is not given.' unless $comparing_version;
 
-    my $decimal_comparing_version = ( $comparing_version =~ s/\A v //rx  +  0 );
-    my $decimal_response_version  = ( $self->api_version =~ s/\A v //rx  +  0 );
+    (my $decimal_comparing_version = $comparing_version) =~ s/\A v //x;
+    (my $decimal_response_version  = $self->api_version) =~ s/\A v //x;
 
-    return $decimal_comparing_version >= $decimal_response_version;
+    return ($decimal_comparing_version + 0) >= ($decimal_response_version + 0);
 }
 
 sub header {
