@@ -1,9 +1,10 @@
 language: perl
 perl:
-  - 5.12
-  - 5.14
-  - 5.16
-  - 5.18
+  - "5.12"
+  - "5.14"
+  - "5.16"
+  - "5.18"
+  - "5.20"
 before_install:
   - cpanm -nq Devel::Cover::Report::Coveralls
   - cpanm Carton
