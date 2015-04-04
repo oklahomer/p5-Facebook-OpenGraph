@@ -5,11 +5,20 @@ perl:
   - "5.16"
   - "5.18"
   - "5.20"
+
+matrix:
+  allow_failures:
+    - perl: "5.20"
+
+env:
+  global:
+    - DEPLOYMENT_PERL_VERSION=5.18
+
 before_install:
-  - cpanm -nq Devel::Cover::Report::Coveralls
-  - cpanm Carton
+  - cpanm -n Devel::Cover::Report::Coveralls
+  - cpanm -n Carton
 install:
-  - carton install --deployment
+  - 'carton install `test "${TRAVIS_PERL_VERSION}" = "${DEPLOYMENT_PERL_VERSION}" && echo " --deployment"`'
 script:
   - HARNESS_PERL_SWITCHES="-MDevel::Cover=+ignore,^local/|^t/" carton exec -- prove -lr t
 after_success:
