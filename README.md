@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/oklahomer/p5-Facebook-OpenGraph.png?branch=master)](https://travis-ci.org/oklahomer/p5-Facebook-OpenGraph) [![Coverage Status](https://coveralls.io/repos/oklahomer/p5-Facebook-OpenGraph/badge.png?branch=master)](https://coveralls.io/r/oklahomer/p5-Facebook-OpenGraph?branch=master)
+[![Build Status](https://travis-ci.org/oklahomer/p5-Facebook-OpenGraph.svg?branch=master)](https://travis-ci.org/oklahomer/p5-Facebook-OpenGraph) [![Coverage Status](https://img.shields.io/coveralls/oklahomer/p5-Facebook-OpenGraph/master.svg)](https://coveralls.io/r/oklahomer/p5-Facebook-OpenGraph?branch=master)
 # NAME
 
 Facebook::OpenGraph - Simple way to handle Facebook's Graph API.
