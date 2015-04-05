@@ -18,3 +18,5 @@ MANIFEST.bak
 !META.json
 !LICENSE
 local/
+.local.vimrc
+.perl-version
