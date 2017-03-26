@@ -392,22 +392,6 @@ sub batch_fast {
     return \@responses;
 }
 
-# Facebook Query Language (FQL) Overview
-# https://developers.facebook.com/docs/technical-guides/fql/
-sub fql {
-    my $self  = shift;
-    my $query = shift;
-    return $self->get('/fql', +{q => $query}, @_);
-}
-
-# Facebook Query Language (FQL) Overview: Multi-query
-# https://developers.facebook.com/docs/technical-guides/fql/#multi
-sub bulk_fql {
-    my $self  = shift;
-    my $batch = shift;
-    return $self->fql($self->json->encode($batch), @_);
-}
-
 sub request {
     my ($self, $method, $uri, $param_ref, $headers) = @_;
 
@@ -747,10 +731,6 @@ including:
 long lived one.
 
 =item * Batch Request
-
-=item * FQL
-
-=item * FQL with Multi-Query
 
 =item * Field Expansion
 
@@ -1211,44 +1191,6 @@ create L<Facebook::OpenGraph::Response> to handle each response.
 You can specify access token for each query within a single batch request.
 See L<https://developers.facebook.com/docs/graph-api/making-multiple-requests/>
 for detail.
-
-=head3 C<< $fb->fql($fql_query) >>
-
-Alias to C<request()> that optimizes query parameter for FQL query and sends
-C<GET> request.
-
-  my $res = $fb->fql('SELECT display_name FROM application WHERE app_id = 12345');
-  #{
-  #    data => [{
-  #        display_name => 'app',
-  #    }],
-  #}
-
-=head3 C<< $fb->bulk_fql(\%fql_queries) >>
-
-Alias to C<fql()> to request multiple FQL query at once.
-
-  my $res = $fb->bulk_fql(+{
-      'all friends' => 'SELECT uid2 FROM friend WHERE uid1 = me()',
-      'my name'     => 'SELECT name FROM user WHERE uid = me()',
-  });
-  #{
-  #    data => [
-  #        {
-  #            fql_result_set => [
-  #                {uid2 => 12345},
-  #                {uid2 => 67890},
-  #            ],
-  #            name => 'all friends',
-  #        },
-  #        {
-  #            fql_result_set => [
-  #                name => 'Michael Corleone'
-  #            ],
-  #            name => 'my name',
-  #        },
-  #    ],
-  #}
 
 =head3 C<< $fb->delete($path, \%param) >>
 

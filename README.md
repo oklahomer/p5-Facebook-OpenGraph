@@ -65,8 +65,6 @@ including:
 - Acquiring user, app and/or page token and refreshing user token for
 long lived one.
 - Batch Request
-- FQL
-- FQL with Multi-Query
 - Field Expansion
 - Etag
 - Wall Posting with Photo or Video
@@ -506,44 +504,6 @@ create [Facebook::OpenGraph::Response](https://metacpan.org/pod/Facebook::OpenGr
 You can specify access token for each query within a single batch request.
 See [https://developers.facebook.com/docs/graph-api/making-multiple-requests/](https://developers.facebook.com/docs/graph-api/making-multiple-requests/)
 for detail.
-
-### `$fb->fql($fql_query)`
-
-Alias to `request()` that optimizes query parameter for FQL query and sends
-`GET` request.
-
-    my $res = $fb->fql('SELECT display_name FROM application WHERE app_id = 12345');
-    #{
-    #    data => [{
-    #        display_name => 'app',
-    #    }],
-    #}
-
-### `$fb->bulk_fql(\%fql_queries)`
-
-Alias to `fql()` to request multiple FQL query at once.
-
-    my $res = $fb->bulk_fql(+{
-        'all friends' => 'SELECT uid2 FROM friend WHERE uid1 = me()',
-        'my name'     => 'SELECT name FROM user WHERE uid = me()',
-    });
-    #{
-    #    data => [
-    #        {
-    #            fql_result_set => [
-    #                {uid2 => 12345},
-    #                {uid2 => 67890},
-    #            ],
-    #            name => 'all friends',
-    #        },
-    #        {
-    #            fql_result_set => [
-    #                name => 'Michael Corleone'
-    #            ],
-    #            name => 'my name',
-    #        },
-    #    ],
-    #}
 
 ### `$fb->delete($path, \%param)`
 
