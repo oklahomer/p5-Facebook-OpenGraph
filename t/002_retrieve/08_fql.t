@@ -6,6 +6,8 @@ use URI;
 use JSON 2 qw/encode_json/;
 use Facebook::OpenGraph;
 
+plan skip_all => "FQL is no longer supported by Graph API";
+
 subtest 'user' => sub {
 
     my $app_id = 127497087322461;
@@ -30,7 +32,7 @@ subtest 'user' => sub {
                 },
                 'args'
             );
-    
+
             return (
                 1,
                 200,
@@ -47,9 +49,8 @@ subtest 'user' => sub {
 
     my $fb = Facebook::OpenGraph->new;
     my $res = $fb->fql($query);
-    
+
     is_deeply $res->{data}, [$datum_ref], 'data';
-    
 };
 
 done_testing;

@@ -5,6 +5,8 @@ use Test::Mock::Furl;
 use JSON 2 qw(decode_json encode_json);
 use Facebook::OpenGraph;
 
+plan skip_all => "FQL is no longer supported by Graph API";
+
 subtest 'multi query w/out dependencies' => sub {
 
     my $val = [
@@ -44,7 +46,7 @@ subtest 'multi query w/out dependencies' => sub {
             is_deeply $args{headers}, [], 'no particular header';
             is $args{content}, '', 'content';
             is $args{method}, 'GET', 'HTTP GET method';
-    
+
             my $uri = $args{url};
             is $uri->scheme, 'https', 'scheme';
             is $uri->path, '/fql', 'path';
@@ -57,7 +59,7 @@ subtest 'multi query w/out dependencies' => sub {
                 },
                 'query parameter',
             );
-    
+
             return (
                 1,
                 200,
