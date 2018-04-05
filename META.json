@@ -4,7 +4,7 @@
       "Oklahomer <hagiwara dot go at gmail dot com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Minilla/v2.3.0, CPAN::Meta::Converter version 2.150001",
+   "generated_by" : "Minilla/v3.0.16, CPAN::Meta::Converter version 2.150001",
    "license" : [
       "perl_5"
    ],
@@ -28,7 +28,7 @@
    "prereqs" : {
       "configure" : {
          "requires" : {
-            "Module::Build" : "0.38"
+            "Module::Build::Tiny" : "0.035"
          }
       },
       "develop" : {
@@ -80,7 +80,7 @@
          "web" : "https://github.com/oklahomer/p5-Facebook-OpenGraph"
       }
    },
-   "version" : "1.23",
+   "version" : "1.24",
    "x_contributors" : [
       "Oklahomer <go.hagiwara@facebook.com>",
       "Oklahomer <hagiwara.go@gmail.com>"
