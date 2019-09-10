@@ -451,7 +451,7 @@ sub request {
 
     my $content = q{};
     if ($method eq 'POST') {
-        if ($param_ref->{source} || $param_ref->{file}) {
+        if ($param_ref->{source} || $param_ref->{file} || $param_ref->{upload_phase} ) {
             # post image or video file
 
             # https://developers.facebook.com/docs/reference/api/video/
@@ -576,13 +576,16 @@ sub prep_param {
         $param_ref->{permissions} = ref $perms ? join q{,}, @$perms : $perms;
     }
 
-    # Source and file parameter contains file path.
+    # Source, file and video_file_chunk parameter contains file path.
     # It must be an array ref to work with HTTP::Request::Common.
     if (my $path = $param_ref->{source}) {
         $param_ref->{source} = ref $path ? $path : [$path];
     }
     if (my $path = $param_ref->{file}) {
         $param_ref->{file} = ref $path ? $path : [$path];
+    }
+    if (my $path = $param_ref->{video_file_chunk}) {
+        $param_ref->{video_file_chunk} = ref $path ? $path : [$path];
     }
 
     # use Field Expansion
