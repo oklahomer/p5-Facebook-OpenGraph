@@ -1175,7 +1175,7 @@ Request batch request and returns an array reference.
 =head3 C<< $fb->batch(\@requests) >>
 
 Request batch request and returns an array reference of response objects. It
-sets C<$fb->access_token> as top level access token, but other than that you
+sets C<< $fb->access_token >> as top level access token, but other than that you
 can specify indivisual access token for each request. The document says
 "The Batch API is flexible and allows individual requests to specify their own
 access tokens as a query string or form post parameter. In that case the top
