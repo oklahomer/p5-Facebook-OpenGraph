@@ -579,18 +579,11 @@ sub prep_param {
         $param_ref->{permissions} = ref $perms ? join q{,}, @$perms : $perms;
     }
 
+    # Source, file, video_file_chunk and captions_file parameter contains file path.
     # It must be an array ref to work with HTTP::Request::Common.
-    if (my $path = $param_ref->{source}) {
-        $param_ref->{source} = ref $path ? $path : [$path];
-    }
-    if (my $path = $param_ref->{file}) {
-        $param_ref->{file} = ref $path ? $path : [$path];
-    }
-    if (my $path = $param_ref->{video_file_chunk}) {
-        $param_ref->{video_file_chunk} = ref $path ? $path : [$path];
-    }
-    if (my $path = $param_ref->{captions_file}) {
-        $param_ref->{captions_file} = ref $path ? $path : [$path];
+    for my $file (qw/source file video_file_chunk captions_file/) {
+        next unless my $path = $param_ref->{$file};
+        $param_ref->{$file} = ref $path ? $path : [$path];
     }
 
     # use Field Expansion
